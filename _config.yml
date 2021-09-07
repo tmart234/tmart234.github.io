@@ -7,8 +7,8 @@ permalink:        pretty
 relative_permalinks: false
 
 # Setup
-title:            Hyde
-tagline:          'Tyler'
+title:            Tyler's Blog
+tagline:          'Security'
 description:      'security stuff'
 url:              https://tmart234.github.io
 baseurl:          /
@@ -17,7 +17,4 @@ author:
   name:           'Tyler'
   url:            https://github.com/tmart234
 
-paginate:         5
-
-# Custom vars
-version:          2.1.0
+paginate:         1

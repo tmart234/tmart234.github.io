@@ -1,7 +1,7 @@
 ---
 layout: post
 title: My Post
-permalink: /blog
+permalink: /:title/
 ---
 
 This is a test page!

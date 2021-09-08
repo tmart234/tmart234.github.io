@@ -9,7 +9,7 @@ First, the traditional formula:
 
 **Risk = Impact \* Likelihood**
 
-Now, you may disagree with that and i&#39;d say to you: "buckle in for whole lot more".
+Now, you may disagree with that and i&#39;d say: "buckle in for whole lot more".
 
 **CVSS = Technical Severity**
 

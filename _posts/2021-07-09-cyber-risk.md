@@ -24,7 +24,7 @@ Basically, the paper identifies 3 critiques for CVSS to resemble Risk:
 2. Failure to account for material consequences of vulnerability (whether life or property is threatened) 
 3. Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)
 
-## 1) Failure to Account for Context
+## Failure to Account for Context
 
 This is a good point to remind you that the real world can be complex. So is assessing risk.
 
@@ -36,13 +36,13 @@ Next, we don&#39;t have context for how the vulnerability is being used in the w
 
 Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases.. Now MITREs Medical Device Rubric for CVSS is an example of an attempt to harmonize context through out an industry. They do a decent job at . But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
 
-## 2) Failure to Account for Consequences of Vulnerability Either Life or Property
+## Failure to Account for Consequences of Vulnerability Either Life or Property
 
 CVSS v4 is slated to add a safety metric. So this is a big win for Life. 
 
 Although, a quick search of "property" in the CVSS CIGs working group's CVSS v4 Working Items resulted in 0 items. Not sure if this is to be considered but looks unlikely.
 
-## 3) Operational Scoring Problems
+## Operational Scoring Problems
 
 The CVSS formula was pulled from where the sun doesn&#39;t shine. There also wasn't solid empirical rational provided for the structure of the formula and the constant values of the formula weights.
 

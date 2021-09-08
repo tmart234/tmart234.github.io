@@ -1,6 +1,6 @@
 ---
 layout: post
-title: cyber-risk
+title: Cybersecurity Risk
 ---
 
 I&#39;ve been contemplating Cybersecurity risk lately. I believe there are a lot of traps and misconceptions on the matter. I wanted to quickly go over some of those here….

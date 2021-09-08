@@ -50,7 +50,7 @@ Although, a quick search of the word "property" in the CVSS CIGs working group's
 
 ## Operational Scoring Problems
 
-To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach do so. 
+To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach to do so. 
 
 ## Likelihood
 

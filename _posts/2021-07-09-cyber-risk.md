@@ -5,11 +5,15 @@ title: Cybersecurity Risk
 
 I&#39;ve been contemplating Cybersecurity risk lately. Mostly shower thoughts. But I believe there are a lot of traps and misconceptions on the matter. I wanted to quickly go over some of those here…
 
-First, the traditional formula:
+First, the simplest formula:
 
 **Risk = Impact \* Likelihood**
 
-Now, you may disagree with that and i&#39;d say: "buckle in for whole lot more".
+First I want to acknowledge everyone tends to define risk differently. Your CISO might think of impact in terms of Financial loss and QA might in terms of patient harm. You might want to complicate the formula even further because you read about it in some blog post:
+
+**Risk = (Threat Actor Capability / Vulnerability Weakness) x likelihood x impact – control effectiveness**
+
+But at the end of the day
 
 **CVSS = Technical Severity**
 

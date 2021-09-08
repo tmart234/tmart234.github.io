@@ -30,6 +30,8 @@ This is a good point to remind you that the real world can be complex. So is ass
 
 CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and we take into account for the importance of an asset in terms of CIA in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
 
+![placeholder](https://github.com/tmart234/tmart234.github.io/tree/master/public/cvss-risk.png "CVSS")
+
 Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing which you have probably already done ;)
 
 Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).

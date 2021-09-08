@@ -19,7 +19,10 @@ and
 
 See whitepaper "Towards Improving CVSS"
 
-Basically, the paper identifies 3 critiques for CVSS to resemble Risk: "1) Failure to account for context (both technical and human-organizational). 2) Failure to account for material consequences of vulnerability (whether life or property is threatened) 3) Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)"
+Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
+"1) Failure to account for context (both technical and human-organizational). 
+2) Failure to account for material consequences of vulnerability (whether life or property is threatened) 
+3) Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)"
 
 ## 1) Failure to Account for Context
 

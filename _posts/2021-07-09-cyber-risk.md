@@ -20,13 +20,13 @@ and
 See whitepaper "Towards Improving CVSS"
 
 Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
-1) Failure to account for context (both technical and human-organizational). 
-2) Failure to account for material consequences of vulnerability (whether life or property is threatened) 
-3) Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)
+1. Failure to account for context (both technical and human-organizational). 
+2. Failure to account for material consequences of vulnerability (whether life or property is threatened) 
+3. Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)
 
 ## 1) Failure to Account for Context
 
-This is a good point to remind you that the real world can be complex. So can assessing risk.
+This is a good point to remind you that the real world can be complex. So is assessing risk.
 
 CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and we take into account for the importance of an asset in terms of CIA in Security Requirements. And that&#39;s it. 
 

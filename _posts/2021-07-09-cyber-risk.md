@@ -32,7 +32,7 @@ CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, t
 
 Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing which you have probably already done ;)
 
-Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. These could be considered vulnerabilities factors (temporal) or business risk (environmental).
+Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).
 
 Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases.. Now MITREs Medical Device Rubric for CVSS is an example of an attempt to harmonize context through out an industry. They do a decent job at . But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
 

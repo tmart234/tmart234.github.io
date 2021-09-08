@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Cyber Risk
+title: cyber-risk
 ---
 
 I&#39;ve been contemplating Cybersecurity risk lately. I believe there are a lot of traps and misconceptions on the matter. I wanted to quickly go over some of those here….
@@ -17,13 +17,13 @@ Let&#39;s start with likelihood. This is typically the more controversial and po
 
 Cybersecurity risk, in particular, needs to deal with the case of the black swan one-time events. These events have high impacts and low likelihood. Such events could wipe out a company and be devastating.
 
-Likelihood, in the case of Cybersecurity, therefore needs to reflect the likelihood, or probability, that a one-time event could occur. Likelihood to affect the organisation once in 1,000 years. Likelihood to achieve the highest protection against evolving threats.
+Likelihood, in the case of Cybersecurity, therefore needs to reflect the likelihood, or probability, that a one-time event could occur. Likelihood to affect the organization once in 1,000 years. Likelihood to achieve the highest protection against evolving threats.
 
 Threat actors exploit vulnerabilities with particular goals in mind and not simply because a vulnerability exists with a high CVSS score. So how can we gauge the likelihood of a one time event?
 
 Context is key. CVSS is for measuring technical severity and not risk.
 
-Temporal takes vulnerabilities factors into account, such as if the vulnerability is a &quot;zero-day&quot; or if mitigation isavailable. It could be further improved by capturing threat actors, threat intelligence, and other complexities of the real world.
+Temporal takes vulnerabilities factors into account, such as if the vulnerability is a &quot;zero-day&quot; or if mitigation is available. It could be further improved by capturing threat actors, threat intelligence, and other complexities of the real world.
 
 Environmental scoring gets closer to the concept of risk by taking an asset&#39;s user context into the equation. For example, mitigations reflected in modified metrics and asset importance reflected in security requirement metrics. CVSS Environmental could further be improved by considering business risks, safety risks, and other user&#39;s environmental factors.
 

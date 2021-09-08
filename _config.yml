@@ -2,8 +2,8 @@
 markdown:         redcarpet
 highlighter:      pygments
 
-# Permalinks
-permalink: /:title/
+permalink: /:year-:month-:day-:title/
+paginate: 5
 
 # Setup
 title:            Tyler's Blog
@@ -15,4 +15,6 @@ author:
   name:           'Tyler'
   url:            https://github.com/tmart234
 
-paginate:         1
+
+plugins:
+  - jekyll-paginate

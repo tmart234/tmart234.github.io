@@ -8,7 +8,7 @@ paginate: 5
 # Setup
 title:            Let's Talk About Sec
 tagline:          'Security'
-description:      'A blog for unadulterated security opinions'
+description:      'A shitty blog for unadulterated infosec hot takes'
 baseurl:          ""
 url:              https://tmart234.github.io
 

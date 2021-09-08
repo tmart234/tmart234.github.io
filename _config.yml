@@ -9,7 +9,7 @@ paginate: 5
 title:            Tyler's Blog
 tagline:          'Security'
 description:      'security stuff'
-baseurl:           ''
+baseurl:          ""
 url:              https://tmart234.github.io
 
 author:

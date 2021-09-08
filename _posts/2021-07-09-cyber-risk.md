@@ -40,7 +40,7 @@ Unfortunately, we don&#39;t have context for how vulnerabilities can affect one 
 
 Next, we don&#39;t have context of how the vulnerability is being used in the wild or if it&#39;s actively being exploited. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).
 
-Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases. Now MITREs Medical Device Rubric for CVSS is an example of an attempt to harmonize context through out an industry. But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
+Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases. <a href="https://www.mitre.org/sites/default/files/publications/pr-18-2208-rubric-for-applying-cvss-to-medical-devices.pdf">MITREs Medical Device Rubric for CVSS</a> is an example of an attempt to harmonize context through out an industry. But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
 
 ## Failure to Account for Consequences Either Life or Property
 

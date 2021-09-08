@@ -10,7 +10,6 @@ title:            Tyler's Blog
 tagline:          'Security'
 description:      'security stuff'
 url:              https://tmart234.github.io
-baseurl:          /
 
 author:
   name:           'Tyler'

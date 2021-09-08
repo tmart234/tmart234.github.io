@@ -21,7 +21,7 @@ and
 
 **CVSS ≠ Risk**
 
-See whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS.</a> Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
+See the whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS.</a> Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
 1. Failure to account for context (both technical and human-organizational). 
 2. Failure to account for material consequences of vulnerability (whether life or property is threatened) 
 3. Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)
@@ -30,7 +30,7 @@ See whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/201
 
 This is a good point to remind you that the real world can be complex. So is assessing risk.
 
-CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and we take into account for the importance of an asset in terms of CIA in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
+CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and can take into account for the importance of an asset in terms of CIA in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
 
 ![CVSS risk attempt](/public/cvss-risk.PNG "CVSS risk attempt")
 

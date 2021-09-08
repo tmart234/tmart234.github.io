@@ -9,7 +9,9 @@ First, the simplest formula:
 
 **Risk = Impact \* Likelihood**
 
-I want to acknowledge that everyone tends to define risk differently. Your CISO might think of impact in terms of Financial loss and QA might in terms of patient harm. You might want to complicate the formula even further because you read about it in some blog post:
+I want to acknowledge that everyone tends to define risk differently. Your CISO might think of impact in terms of Financial loss and QA might in terms of patient harm. 
+
+As a security professional, you might want to complicate the formula even further because you read about it in some blog post:
 
 **Risk = (Threat Actor Capability / Vulnerability Weakness) x likelihood x impact – control effectiveness**
 

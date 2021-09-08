@@ -38,13 +38,13 @@ CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets
 
 Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a holistic view of all vulnerabilities in a system and mapping their complex relationships to things like ATT&CK patterns. I'll assume you already have a solution for this ;)
 
-Next, we don&#39;t have context of how the vulnerability is being used in the wild or if it&#39;s actively being exploited. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).
+Next, we don&#39;t have context of how the vulnerability is being used in the wild or if it&#39;s actively being exploited. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental). Focus should be shifted to the skills and motivations of an attacker, and whether the effort required to exploit a vulnerability is less than the perceived gain the attacker will achieve by compromising the system rather than focusing on attempting to quantify likelihood of a future adverse impact in traditional probabilistic terms.
 
 Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases. <a href="https://www.mitre.org/sites/default/files/publications/pr-18-2208-rubric-for-applying-cvss-to-medical-devices.pdf">MITREs Medical Device Rubric for CVSS</a> is an example of an attempt to harmonize context throughout an industry. But remember, since CVSS only has context at an asset level, we end up with a decent asset analysis but fail to take into account the device use case and other environmental factors which will tie into #2.
 
 ## Failure to Account for Consequences Either Life or Property
 
-CVSS v4 is slated to add a safety metric. So this is a big win for accounting for patient harm and loss of life. Beyond medical, automotive and aerospace could benefit from this metric. 
+CVSS v4 has purposed to add a safety metric. So this is a big win for accounting for patient harm and loss of life. Beyond medical, automotive, Operational Technology, and aerospace industries could benefit from this metric.
 
 Although, a quick search of the word "property" in the CVSS CIGs working group's "v4 Working Items" resulted in 0 results. Not sure if this is to be considered but looks unlikely.
 
@@ -52,11 +52,20 @@ Although, a quick search of the word "property" in the CVSS CIGs working group's
 
 To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach to do so. 
 
+
 ## Likelihood
 
 Let&#39;s dive into likelihood. This is typically the more controversial and political aspect of the traditional risk formula.
 
 &quot;_What does likelihood mean, specifically for Cybersecurity risk? How can we define it?&quot;_
+
+### Definitions
+- ISO 31000 defines likelihood as:“the chance of something happening.”
+- NIST 800-30: “the probability that a given threat is capable of exploiting a given vulnerability or a set of vulnerabilities.”
+- AAMI TIR57 Risk Management Principles for Medical Device Security & CNSSI No. 4009 defines likelihood of occurrence as: “weighted factor based on a subjective analysis of the probability that a given threat is capable of exploiting a given vulnerability”
+
+
+Safety risk management is designed to deal with failures in which the likelihood is based on design and manufacturing factors. Whereas security risk management likelihood is more of an estimate to whether an attacker will invest time and resources to exploit that vulnerability.
 
 Cybersecurity risk, in particular, needs to deal with the case of the black swan one-time events. These events have high impacts and low likelihood. Such events could wipe out a company and be devastating.
 
@@ -77,3 +86,30 @@ While not as controversial as likelihood, I believe impact can have just as many
 Let's start we the fact that we are using CIA as a means to gauge impact. The lack of granularity in the metrics can present a challenge for achieving accurate CIA values.
 
 Next, the fact that everyone has different risk thresholds can lead to different interpretations of impact.
+
+## Other Scoring Specs
+
+EPSS takes complexity and how the vulnerability is being exploited into account. So does VPR, which is maintained by tenable. I personally like VPR.
+
+SVCC is a cost based risk scoring.
+
+## CVSS v4
+
+Let's dig into CVSS <a href="https://docs.google.com/document/d/1qmmk9TQulW9d1cuipu_ziXDX0pUswbZ1WSQyynHbvKU/edit">v4 working items.</a>
+
+
+### Threat Metric Group
+Temporal Metric Group is replaced with Threat Metric Group as the SIG focuses on the importance of using Threat Intelligence for accurate scoring. An additional Threat Intelligence metric has been purosed. On top of that, there is pending removal of Report Confidence and Remediation Level metrics. Any previous temporal exploitability metrics should go into base.
+
+
+### Environmental
+Representation of vendor-supplied Severity/Impact scoring within CVSS standard. This is interesting because Security requirements reflect asset importance, whereas vendor-supplied Severity reflects the vendor’s risk level. Lastly, we would still need an industry or regulatory defined risk level to get full context of Environmental Impacts.
+
+
+
+
+
+The working items mentions the “Towards Improving CVSS.” whitepaper at the end and acknowledges a shift needed to focus on deciding response priority, which is more like risk than severity.
+
+
+

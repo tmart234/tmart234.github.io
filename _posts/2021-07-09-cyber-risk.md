@@ -28,7 +28,7 @@ Basically, the paper identifies 3 critiques for CVSS to resemble Risk:
 
 This is a good point to remind you that the real world can be complex. So is assessing risk.
 
-CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and we take into account for the importance of an asset in terms of CIA in Security Requirements. And that&#39;s it. 
+CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and we take into account for the importance of an asset in terms of CIA in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
 
 Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing which you have probably already done ;)
 
@@ -59,8 +59,6 @@ Likelihood, in the case of Cybersecurity, therefore needs to reflect the likelih
 Threat actors exploit vulnerabilities with particular goals in mind and not simply because a vulnerability exists with a high CVSS score. So how can we gauge the likelihood of a one time event?
 
 Context is key.
-
-Environmental scoring gets closer to the concept of risk by taking an asset&#39;s user context into the equation. For example, mitigations reflected in modified metrics and asset importance reflected in security requirement metrics. CVSS Environmental could further be improved by considering business risks, safety risks, and other user&#39;s environmental factors.
 
 ### Quick Recap:
 

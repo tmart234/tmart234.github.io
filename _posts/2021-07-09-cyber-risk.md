@@ -32,13 +32,13 @@ See the whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper
 
 This is a good point to remind you that the real world can be complex. So is assessing risk.
 
-CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets, that is it! We can take into account context for the asset&#39;s mitigations in Modified metrics. We can also take into account for the importance of an asset, in terms of CIA, in Security Requirements. But keep in mind, CVSS was designed for assessing traditional IT assets, not everything under the sun. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
+CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets, that is it! We can take into account context for the asset&#39;s mitigations in Modified metrics. We can also take into account for the importance of an asset, in terms of CIA, in Security Requirements. But keep in mind, CVSS was designed for assessing traditional IT assets, not everything under the sun. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s context into the equation. But that's not enough.
 
 ![CVSS risk attempt](/public/cvss-risk.PNG "CVSS risk attempt")
 
-Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing any risk which you all have probably already done ;)
+Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a holistic view of all vulnerabilities in a system and mapping their complex relationships to things like ATT&CK patterns. I'll assume you already have a solution for this ;)
 
-Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).
+Next, we don&#39;t have context of how the vulnerability is being used in the wild or if it&#39;s actively being exploited. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).
 
 Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases. Now MITREs Medical Device Rubric for CVSS is an example of an attempt to harmonize context through out an industry. But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
 

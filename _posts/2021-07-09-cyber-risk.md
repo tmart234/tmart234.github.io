@@ -44,13 +44,13 @@ Last, we have no context of how the system is being used in the real world and a
 
 ## Failure to Account for Consequences Either Life or Property
 
-CVSS v4 is slated to add a safety metric. So this is a big win for Life. 
+CVSS v4 is slated to add a safety metric. So this is a big win for accounting for patient harm and loss of life. Beyond medical, automotive and aerospace could benefit from this metric. 
 
-Although, a quick search of the word "property" in the CVSS CIGs working group's v4 Working Items resulted in 0 results. Not sure if this is to be considered but looks unlikely.
+Although, a quick search of the word "property" in the CVSS CIGs working group's "v4 Working Items" resulted in 0 results. Not sure if this is to be considered but looks unlikely.
 
 ## Operational Scoring Problems
 
-The CVSS formula was pulled from where the sun doesn&#39;t shine. There also wasn't solid empirical rational provided for the structure of the formula and the constant values of the formula weights.
+To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There also was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach do so. 
 
 ## Likelihood
 

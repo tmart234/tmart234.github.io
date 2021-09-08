@@ -20,9 +20,9 @@ and
 See whitepaper "Towards Improving CVSS"
 
 Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
-"1) Failure to account for context (both technical and human-organizational). 
+1) Failure to account for context (both technical and human-organizational). 
 2) Failure to account for material consequences of vulnerability (whether life or property is threatened) 
-3) Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)"
+3) Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)
 
 ## 1) Failure to Account for Context
 
@@ -38,7 +38,9 @@ Last, we have no context of how the system is being used in the real world and a
 
 ## 2) Failure to Account for Consequences of Vulnerability Either Life or Property
 
-CVSS v4 is slated to add a safety metric. So this is a big win for Life. A quick search of "property" in the CVSS CIGs working group's CVSS v4 Working Items resulted in 0 items.
+CVSS v4 is slated to add a safety metric. So this is a big win for Life. 
+
+Although, a quick search of "property" in the CVSS CIGs working group's CVSS v4 Working Items resulted in 0 items. Not sure if this is to be considered but looks unlikely.
 
 ## 3) Operational Scoring Problems
 

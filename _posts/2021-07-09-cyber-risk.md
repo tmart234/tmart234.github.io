@@ -3,7 +3,7 @@ layout: post
 title: Cybersecurity Risk
 ---
 
-I&#39;ve been contemplating Cybersecurity risk lately. Mostly shower thoughts. But I believe there are a lot of traps and misconceptions on the matter and I wanted to quickly go over some of those here…
+Wanted to discuss some shower thoughts I've had around Cybersecurity risk. I believe there are a lot of traps and misconceptions on the matter so let's quickly go over some of those…
 
 First, the simplest formula:
 
@@ -50,7 +50,7 @@ Although, a quick search of the word "property" in the CVSS CIGs working group's
 
 ## Operational Scoring Problems
 
-To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There also was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach do so. 
+To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach do so. 
 
 ## Likelihood
 

@@ -32,7 +32,7 @@ CVSS Environmental v3.1 ONLY takes into account context the user&#39;s assets, t
 
 Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing which you have probably already done ;)
 
-Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations.
+Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. These could be considered vulnerabilities factors (temporal) or business risk (environmental).
 
 Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases.. Now MITREs Medical Device Rubric for CVSS is an example of an attempt to harmonize context through out an industry. They do a decent job at . But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
 
@@ -56,9 +56,7 @@ Likelihood, in the case of Cybersecurity, therefore needs to reflect the likelih
 
 Threat actors exploit vulnerabilities with particular goals in mind and not simply because a vulnerability exists with a high CVSS score. So how can we gauge the likelihood of a one time event?
 
-Context is key. CVSS is for measuring technical severity and not risk.
-
-Temporal takes vulnerabilities factors into account, such as if the vulnerability is a &quot;zero-day&quot; or if mitigation is available. It could be further improved by capturing threat actors, threat intelligence, and other complexities of the real world.
+Context is key.
 
 Environmental scoring gets closer to the concept of risk by taking an asset&#39;s user context into the equation. For example, mitigations reflected in modified metrics and asset importance reflected in security requirement metrics. CVSS Environmental could further be improved by considering business risks, safety risks, and other user&#39;s environmental factors.
 

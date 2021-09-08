@@ -32,11 +32,11 @@ See the whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper
 
 This is a good point to remind you that the real world can be complex. So is assessing risk.
 
-CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets, that is it! Keep in mind, CVSS was designed for assessing traditional IT assets and not everything under the sun. We can take into account context for the asset&#39;s mitigations in modified metrics and can take into account for the importance of an asset in terms of CIA in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
+CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets, that is it! We can take into account context for the asset&#39;s mitigations in Modified metrics. We can also take into account for the importance of an asset, in terms of CIA, in Security Requirements. But keep in mind, CVSS was designed for assessing traditional IT assets, not everything under the sun. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s user context into the equation. But that's not enough.
 
 ![CVSS risk attempt](/public/cvss-risk.PNG "CVSS risk attempt")
 
-Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing which you have probably already done ;)
+Unfortunately, we don&#39;t have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a snapshot and a holistic view of all vulnerabilities in a system before assessing any risk which you all have probably already done ;)
 
 Next, we don&#39;t have context for how the vulnerability is being used in the wild. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, a Business Impact Analysis, and participating in Information Sharing and Analysis Organizations. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental).
 

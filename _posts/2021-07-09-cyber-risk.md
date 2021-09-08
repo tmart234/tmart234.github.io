@@ -36,7 +36,7 @@ Next, we don&#39;t have context for how the vulnerability is being used in the w
 
 Last, we have no context of how the system is being used in the real world and a consistent context throughout a community. Take the case of a hearing aid versus a pacemaker. They both have different context for their use cases.. Now MITREs Medical Device Rubric for CVSS is an example of an attempt to harmonize context through out an industry. They do a decent job at . But remember, since CVSS only has context at an asset level, we fail to take into account the devices use case which ties into #2.
 
-## Failure to Account for Consequences of Vulnerability Either Life or Property
+## Failure to Account for Consequences Either Life or Property
 
 CVSS v4 is slated to add a safety metric. So this is a big win for Life. 
 

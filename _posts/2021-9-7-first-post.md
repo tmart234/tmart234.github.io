@@ -1,7 +1,8 @@
 ---
 layout: post
-title: My Post
-permalink: /:title/
+title: First Post
 ---
 
-This is a test page!
+This is a test post!
+
+## Welcome

@@ -6,9 +6,9 @@ permalink: /:title/
 paginate: 5
 
 # Setup
-title:            Tyler's Blog
+title:            Let's Talk About Sec
 tagline:          'Security'
-description:      'security stuff'
+description:      'A blog for unadulterated security opinions'
 baseurl:          ""
 url:              https://tmart234.github.io
 

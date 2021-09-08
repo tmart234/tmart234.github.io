@@ -40,7 +40,7 @@ Last, we have no context of how the system is being used in the real world and a
 
 CVSS v4 is slated to add a safety metric. So this is a big win for Life. 
 
-Although, a quick search of "property" in the CVSS CIGs working group's CVSS v4 Working Items resulted in 0 items. Not sure if this is to be considered but looks unlikely.
+Although, a quick search of the word "property" in the CVSS CIGs working group's v4 Working Items resulted in 0 results. Not sure if this is to be considered but looks unlikely.
 
 ## Operational Scoring Problems
 

@@ -17,7 +17,7 @@ and
 
 **CVSS ≠ Risk**
 
-See whitepaper "Towards Improving CVSS"
+See whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS</a>
 
 Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
 1. Failure to account for context (both technical and human-organizational). 

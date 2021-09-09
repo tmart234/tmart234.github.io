@@ -7,13 +7,13 @@ Wanted to discuss some shower thoughts I've had recently around Cybersecurity ri
 
 First, the simplest formula:
 
-**Risk = Impact \* Likelihood**
+**Risk = Impact x Likelihood**
 
 I want to acknowledge that everyone tends to define risk differently. Your CISO might think of impact in terms of Financial loss and QA might in terms of patient harm. 
 
 As a security professional, you might want to redefine the formula even further because you read about it in some blog post:
 
-**Risk = (Threat Actor Capability / Vulnerability Weakness) x likelihood x impact – control effectiveness**
+**Risk = (Threat Actor Capability / Vulnerability Weakness) x Likelihood x Impact – Control Effectiveness**
 
 But at the end of the day
 

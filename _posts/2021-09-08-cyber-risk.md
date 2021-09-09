@@ -52,6 +52,7 @@ Although, a quick search of the word "property" in the CVSS CIGs working group's
 
 To put it nicely, the CVSS formula was pulled from where the sun doesn&#39;t shine. There was never any solid empirical rational provided for the structure of the formula or for the constant values of the formula weights. The paper calls for a complete overhaul in the formula and goes over an effective approach to do so. 
 
+Here's what Art Manion had to say about the formula in an <a href="https://searchsecurity.techtarget.com/news/252458370/CERT-CCs-Art-Manion-says-CVSS-scoring-needs-to-be-replaced"> interview</a>: “The math is sort of tortuous. There wasn't a lot of transparency on that process. I'm on the SIG, so I actually know a little bit about what happened, but no one else really does. We didn't even write it down that well internally, so it's hard to tell.” Who would of thought CVSS would be such technical debt. 
 
 ## Likelihood
 

@@ -3,7 +3,7 @@ layout: post
 title: Cybersecurity Risk
 ---
 
-Wanted to discuss some shower thoughts I've had recently around Cybersecurity risk. I believe there are a lot of traps and misconceptions on the matter so let's quickly go over some of those.
+Wanted to discuss some shower thoughts I've had recently around Cybersecurity risk.
 
 First, the simplest formula:
 

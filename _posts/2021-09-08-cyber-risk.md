@@ -23,7 +23,7 @@ and
 
 **CVSS ≠ Risk**
 
-See the whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS.</a> Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
+Or at least that's how things currently stand. See the whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS.</a> Basically, the paper identifies 3 critiques for CVSS to resemble Risk: 
 1. Failure to account for context (both technical and human-organizational). 
 2. Failure to account for material consequences of vulnerability (whether life or property is threatened) 
 3. Operational scoring problems (inconsistent or clumped scores, algorithm design quibbles)
@@ -91,6 +91,8 @@ Next, the fact that everyone has different risk thresholds can lead to different
 
 EPSS takes complexity and how the vulnerability is being exploited into account. So does VPR, which is maintained by tenable. I personally like VPR.
 
+Metrics in VPR are: Vulnerability Age, CVSS Impact, Exploit Code Maturity (CVSS), Product Coverage (similar to target distribution), Threat Sources, Threat Intensity (or frequency), and Threat Recency (in days)
+
 SVCC is a cost based risk scoring.
 
 ## CVSS v4
@@ -105,7 +107,7 @@ Temporal Metric Group is replaced with Threat Metric Group as the SIG focuses on
 ### Environmental
 Representation of vendor-supplied Severity/Impact scoring within CVSS standard. This is interesting because Security requirements reflect asset importance, whereas vendor-supplied Severity reflects the vendor’s risk level. Lastly, we would still need an industry or regulatory defined risk level to get full context of Environmental Impacts.
 
-
+Target distribution to be added back. Similarly used in such scoring metrics like Vulnerability Priority Rating (VPR).
 
 
 

@@ -30,7 +30,7 @@ Or at least that's how things currently stand. See the whitepaper <a href="https
 
 ## Failure to Account for Context
 
-This is a good point to remind you that the real world can be complex. So is assessing risk.
+This is a good point to remind you that the real world can be complex. So is assessing risk. Particularly because we are accounting for real world context.
 
 CVSS Environmental v3.1 ONLY takes into account context of the user&#39;s assets, that is it! We can take into account context for the asset&#39;s mitigations in Modified metrics. We can also take into account for the importance of an asset, in terms of CIA, in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset&#39;s context into the equation. But that's not enough. Also keep in mind, CVSS was designed for assessing traditional IT assets, not everything under the sun. 
 
@@ -70,7 +70,7 @@ Safety risk management is designed to deal with failures in which the likelihood
 
 Cybersecurity risk, in particular, needs to deal with the case of the black swan one-time events. These events have high impacts and low likelihood. Such events could wipe out a company and be devastating.
 
-Likelihood, in the case of Cybersecurity, therefore needs to reflect the likelihood, or probability, that a one-time event could occur. Likelihood to affect the organization once in 1,000 years. Likelihood to achieve the highest protection against evolving threats.
+Likelihood, in the case of Cybersecurity, therefore needs to reflect the likelihood, or probability, that a one-time event could occur. Likelihood to affect the organization once in the entire product lifetime. Likelihood to achieve the highest protection against evolving threats.
 
 Threat actors exploit vulnerabilities with particular goals in mind and not simply because a vulnerability exists with a high CVSS score. So how can we gauge the likelihood of a one time event?
 

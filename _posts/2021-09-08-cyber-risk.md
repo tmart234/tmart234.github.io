@@ -93,7 +93,7 @@ EPSS takes complexity and how the vulnerability is being exploited into account.
 
 Metrics in VPR are: Vulnerability Age, CVSS Impact, Exploit Code Maturity (CVSS), Product Coverage (similar to target distribution), Threat Sources, Threat Intensity (or frequency), and Threat Recency (in days)
 
-SVCC is a cost based risk scoring.
+SSVC is another decent risk scoring spec. Cvss input is vectors and evaluates with Byzantine math that outputs partial range. SSVC uses decision points as inputs and evaluates with decision trees that outputs a qualified priority. Decision trees are qualitative actions that an organization can take. SSVC uses 6 decision point categories: exploitation (threat feed), technical impact (cvss base), utility, exposure, mission impact, and safety impact. Exposure, mission impact, and safety impact can all be asset management.
 
 ## CVSS v4
 

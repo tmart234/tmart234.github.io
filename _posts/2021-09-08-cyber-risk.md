@@ -87,10 +87,14 @@ While not as controversial as likelihood, I believe impact can have just as many
 Let's start we the fact that we are using CIA as a means to gauge impact. The lack of granularity in the metrics can present a challenge for achieving accurate CIA values.
 
 Next, the fact that everyone has different levels of risk can lead to different interpretations of impact. Unfortunately, with Security Requirements only gauging impact at the asset level, we have no context of vendor or regulatory risk levels. If the vendor only designs class 3 implants, it would probably have a high vendor risk. But ultimately that the vendors decision. If regulatory had strict requirements, this would be high regulatory risk. Ultimately this is NOT the vendors decision.
+
 Average security requirements to find asset impact:
-**(IR x CR x AR / 3) = Asset Impact **
+
+** (IR x CR x AR / 3) = Asset Impact **
+
 Average with the other environmental impacts:
-**(Asset Impact + Vendor Impact + Regulatory Impact) / 3 = Environmental Impact**
+
+** (Asset Impact + Vendor Impact + Regulatory Impact) / 3 = Environmental Impact **
 
 ## Other Scoring Specs
 

@@ -90,11 +90,11 @@ Next, the fact that everyone has different levels of risk can lead to different 
 
 Average security requirements to find asset impact:
 
-** (IR x CR x AR / 3) = Asset Impact **
+**(IR x CR x AR / 3) = Asset Impact**
 
 Average with the other environmental impacts:
 
-** (Asset Impact + Vendor Impact + Regulatory Impact) / 3 = Environmental Impact **
+**(Asset Impact + Vendor Impact + Regulatory Impact) / 3 = Environmental Impact**
 
 ## Other Scoring Specs
 

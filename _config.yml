@@ -6,9 +6,9 @@ permalink: /:title/
 paginate: 5
 
 # Setup
-title:            Let's Talk About Sec
+title:            Let's Talk About MedSec
 tagline:          'Security'
-description:      'unadulterated medsec hot takes'
+description:      'unadulterated hot takes on medical device cybersecurity'
 baseurl:          ""
 url:              https://tmart234.github.io
 

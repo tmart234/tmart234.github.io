@@ -3,7 +3,7 @@ layout: post
 title: Cybersecurity Risk
 ---
 
-I wanted to discuss some shower thoughts that I've had recently around how we percieve Cybersecurity risk. I recognize that the subject of cybersecurity risk is not very sexy. So being my first post, I gave the blog a HOT title.
+I wanted to discuss some shower thoughts that I've had recently around how we perceive Cybersecurity risk. I recognize that the subject of cybersecurity risk is not very sexy. So being my first post, I gave the blog a HOT title.
 
 First, if you haven't already, check the whitepaper <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS.</a> 
 TL;DR: of the paper is it identifies 3 critiques for CVSS to resemble Risk: 
@@ -13,10 +13,11 @@ TL;DR: of the paper is it identifies 3 critiques for CVSS to resemble Risk:
 
 You can also optionally check out <a href="https://bit.ly/cvssv4-workitems">A List of potential improvements for CVSS v4</a>. We will cover some of these within this post but note that the v4 improvements contain the <a href="https://resources.sei.cmu.edu/asset_files/WhitePaper/2018_019_001_538372.pdf">Towards Improving CVSS</a> article referenced above.
 
-I have scored with CVSS a bit but only started really digging into the issue after I stubled on an interview with Art Manion, one of the origional creators of CVSS. When asked how CVSS was formulated, what <a href="https://searchsecurity.techtarget.com/news/252458370/CERT-CCs-Art-Manion-says-CVSS-scoring-needs-to-be-replaced">  he had to say </a> was quite alarming: “The math is sort of tortuous. There wasn't a lot of transparency on that process. I'm on the SIG, so I actually know a little bit about what happened, but no one else really does. We didn't even write it down that well internally, so it's hard to tell.”
-Wow so answering questions like "Why "Local"  for Attack Vector equals 0.71" is impossible to answer becasue no "one wrote it down".
-So not only are people confusing CVSS for a risk analyis, but we don't have sound reasoning for it's formula.
-Okay then what is risk?
+I have scored with CVSS a bit but only started really digging into the issue after I stumbled on an interview with Art Manion, one of the original creators of CVSS. When asked how CVSS was formulated, what <a href="https://searchsecurity.techtarget.com/news/252458370/CERT-CCs-Art-Manion-says-CVSS-scoring-needs-to-be-replaced">  he had to say </a> was quite alarming: “The math is sort of tortuous. There wasn't a lot of transparency on that process. I'm on the SIG, so I actually know a little bit about what happened, but no one else really does. We didn't even write it down that well internally, so it's hard to tell.”
+
+Wow! So answering questions like "Why is "Local"  for Attack Vector equal to 0.71" is impossible to answer because no "one wrote it down". So not only are people confusing CVSS for a real risk analysis, but we don't have sound reasoning for it's formula and values.
+
+... Okay then what is risk?
 From a non-cybersecurity perspective, the simplest formula typically used is:
 
 **Risk = Impact x Likelihood**
@@ -39,13 +40,13 @@ Or at least that's how things currently stand...
 
 ## Failure to Account for Context
 
-This is a good point to remind you that the real world can be complex. So is assessing risk. Particularly because we are accounting for real world context amd there are endless ways to do this.
+This is a good point to remind you that the real world can be complex. So is assessing risk. Particularly because we are accounting for real world context and there are endless ways to do this.
 
 CVSS Environmental v3.1 ONLY takes into account context of the user's assets, that is it! We can take into account context for the asset's mitigations in Modified metrics. We can also take into account for the importance of an asset, in terms of CIA, in Security Requirements. Therefore, environmental scoring gets slightly closer to the concept of risk by taking an asset's context into the equation. But that's not enough. Also keep in mind, CVSS was designed for assessing traditional IT assets, not everything under the sun. 
 
 ![CVSS risk attempt](/public/cvss-risk.PNG "CVSS risk attempt")
 
-Unfortunately, we don't have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a holistic view of all vulnerabilities in a system and mapping their complex relationships to things like ATT&CK patterns. There are vendors working hard on vuln chaining using ML/AI solutions with automated testing.
+Unfortunately, we don't have context for how vulnerabilities can affect one another and be chained together. I imagine this would require a holistic view of all vulnerabilities in a system and mapping their complex relationships to things like ATT&CK patterns. There are vendors working hard on vulnerability chaining using ML/AI solutions with automated testing.
 
 Next, we don't have context of how the vulnerability is being used in the wild or if it's actively being exploited. This could require gathering and utilizing threat intelligence, IoCs, classifying threat actors, or a Business Impact Analysis. This context could be considered either vulnerability factors (temporal) or business risk factors (environmental). Focus should be shifted to the skills and motivations of an attacker, and whether the effort required to exploit a vulnerability is less than the perceived gain the attacker will achieve by compromising the system rather than focusing on attempting to quantify likelihood of a future adverse impact in traditional probabilistic terms.
 
@@ -95,14 +96,14 @@ While not as controversial as likelihood, I believe impact can have just as many
 
 Let's start we the fact that we are using CIA as a means to gauge impact. The lack of granularity in just high, medium, and low metrics can present a challenge for achieving accurate CIA values.
 
-Next, the fact that every company has different operating factors, and maturity levels, and their own interpretations can lead to a different risk environment at the orginizational level.
- 
+Next, the fact that every company has different operating factors, and maturity levels, and their own interpretations can lead to a different risk environment at the organizational level.
+
 Now let's look at the CVSS Environmental formula to see how Security Requirements are used: 
 ** 1 - [ (1 - ConfidentialityRequirement × ModifiedConfidentiality) × (1 - IntegrityRequirement × ModifiedIntegrity) × (1 - AvailabilityRequirement × ModifiedAvailability) ]**
 
-Unfortunately, with Security Requirements are only gauging impact at the asset level, we have no context of vendor or regulatory risk levels. If the vendor only designs class 3 implants, it would probably have a high orginizational and regulatory risk. If regulatory had strict requirements, this would be high regulatory risk. Ultimately this is NOT the vendors decision.
+Unfortunately, with Security Requirements are only gauging impact at the asset level, we have no context of vendor or regulatory risk levels. If the vendor only designs class 3 implants, it would probably have a high organizational and regulatory risk. If regulatory had strict requirements, this would be high regulatory risk. Ultimately this is NOT the vendors decision.
 
-On top of all that, we also lack ways to determine Security Requrements based on Threat Actor Risk in a given environment.
+On top of all that, we also lack ways to determine Security Requirements based on Threat Actor Risk in a given environment.
 
 So perhaps we can say an asset's individual impact is something like:
 
@@ -110,10 +111,10 @@ So perhaps we can say an asset's individual impact is something like:
 
 And when we combine all of the new environmental impacts in a some meaningful way we get:
 
-**(Asset Impact + Orginizational Impact + Regulatory Impact + Threat Impact) = Environmental Impact**
+**(Asset Impact + Organizational Impact + Regulatory Impact + Threat Impact) = Environmental Impact**
 
 This new Environmental impact would be more encompassing beyond just the individual asset level.
-I suggest we focus on creating repeatable frameworks for deriving Security Requrements so that companies can facor this into their risk analysis.
+I suggest we focus on creating repeatable frameworks for deriving Security Requirements so that companies can factor this into their risk analysis.
 
 ## Other Scoring Specs
 
@@ -129,7 +130,7 @@ Let's dig into CVSS <a href="https://docs.google.com/document/d/1qmmk9TQulW9d1cu
 
 
 ### Threat Metric Group
-Temporal Metric Group is replaced with Threat Metric Group as the SIG focuses on the importance of using Threat Intelligence for accurate scoring. An additional Threat Intelligence metric has been purosed. On top of that, there is pending removal of Report Confidence and Remediation Level metrics. Any previous temporal exploitability metrics should go into base.
+Temporal Metric Group is replaced with Threat Metric Group as the SIG focuses on the importance of using Threat Intelligence for accurate scoring. An additional Threat Intelligence metric has been purposed. On top of that, there is pending removal of Report Confidence and Remediation Level metrics. Any previous temporal exploitability metrics should go into base.
 
 
 ### Environmental

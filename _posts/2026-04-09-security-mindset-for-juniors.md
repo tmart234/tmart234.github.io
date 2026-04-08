@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "The Security Mindset: A Field Guide for Junior Engineers"
+mermaid: true
 ---
 
 I keep finding myself repeating the same advice to junior engineers. None of it is about tools. None of it is about certifications. All of it is about how you think.
@@ -64,6 +65,36 @@ If you find yourself "putting your foot down" consistently, that's likely a cult
 ## The Cybersecurity Stack
 
 This is the single most important framework I can leave you with. Internalize this ordering and live by it:
+
+{% raw %}
+<div class="mermaid">
+block-beta
+    columns 1
+    block:tooling["🔧 5. Tooling":1]
+        t1["Scanners"] t2["SIEMs"] t3["Fuzzers"] t4["Pentest Suites"]
+    end
+    block:coding["💻 4. Coding / Math":1]
+        c1["Scripting"] c2["Crypto Fundamentals"] c3["Logic"] c4["Automation"]
+    end
+    block:tech["⚙️ 3. Technology":1]
+        te1["Networking"] te2["Operating Systems"] te3["Cloud"] te4["Embedded Systems"]
+    end
+    block:process["📋 2. Processes":1]
+        p1["Vuln Management"] p2["Incident Response"] p3["Secure SDLC"] p4["Disclosure"]
+    end
+    block:concepts["🧠 1. Concepts (Layer 0)":1]
+        co1["Risk"] co2["Threat Modeling"] co3["CIA Triad"] co4["Attack Surfaces"]
+    end
+
+    style concepts fill:#2d6a4f,color:#fff,stroke:#1b4332
+    style process fill:#40916c,color:#fff,stroke:#2d6a4f
+    style tech fill:#52b788,color:#fff,stroke:#40916c
+    style coding fill:#74c69d,color:#000,stroke:#52b788
+    style tooling fill:#95d5b2,color:#000,stroke:#74c69d
+</div>
+{% endraw %}
+
+*Start at the bottom. The foundation is where your investment pays off most.*
 
 1. **Concepts** (layer 0): risk, threat modeling, CIA triad, trust boundaries, attack surfaces
 2. **Processes**: vulnerability management, incident response, secure development lifecycle, coordinated disclosure

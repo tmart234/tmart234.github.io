@@ -1,7 +1,10 @@
 name: PR Preview
 
 on:
-  pull_request:
+  # pull_request_target runs in the base branch context (master), which
+  # satisfies the Pages deployment branch restriction while still letting
+  # us build the PR's code via an explicit checkout of the PR HEAD.
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -18,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/configure-pages@v5
       - uses: actions/jekyll-build-pages@v1
         with:

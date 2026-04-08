@@ -12,6 +12,8 @@ In the threat modeling context, threats lead to potential (or unconfirmed) vulne
 
 When we say "centric", we are speaking to what is used as **input** to generate outputs (threats).
 
+![Threat modelling approach]({{ site.baseurl }}/public/threat-modelling-approach.jpg)
+
 ## The Taxonomy
 
 {% raw %}
@@ -31,7 +33,7 @@ graph LR
             end
 
             U["User-Needs-Centric<br>---<br>Feature to abuse inversion<br>User story threats<br>Feature-complete coverage"]
-            ATK["Attacker-Centric<br>---<br>Threat actor profiles<br>Attack trees, PnG<br>(Domain-dependent)<br>---<br>Not used in medical<br>device product security"]
+            ATK["Attacker-Centric<br>---<br>Threat actor profiles<br>Attack trees, PnG<br>(Domain-dependent)"]
         end
 
         subgraph generation["Threat Generation (the inversion)"]
@@ -47,13 +49,13 @@ graph LR
         F --> F_Q
         P --> P_Q
         U --> U_Q
-        ATK -.-> ATK_Q
+        ATK --> ATK_Q
 
         A_Q --> T
         F_Q --> T
         P_Q --> T
         U_Q --> T
-        ATK_Q -.-> T
+        ATK_Q --> T
 
         T["Raw Threats +<br>Documented Assumptions"]
 
@@ -69,26 +71,6 @@ graph LR
         T2["Reconciled Threat<br>Inventory"]
     end
 
-    subgraph characterization["Characterization (Descriptive)"]
-        direction TB
-        CAPEC["CAPEC<br>Attack Patterns<br>(design-level)"]
-        CWE["CWE<br>Weaknesses<br>(implementation)"]
-        STRIDE_tag["STRIDE<br>Categories<br>(dual: generate or tag)"]
-        CVSS["CVSS<br>Severity Scoring"]
-        ATTACK["ATT&CK<br>(post-deployment<br>detection only)"]
-    end
-
-    subgraph Q3Q4["Q3-Q4: Mitigate & Validate"]
-        OUT["Mitigations<br>Requirements<br>Retrospective"]
-    end
-
-    T2 --> characterization
-    characterization --> OUT
-
-    subgraph privacy["Different Axis: Privacy (LINDDUN)"]
-        direction TB
-        PRIV["LINDDUN<br>---<br>Threats flow outward:<br>System to User<br>(not attacker to system)<br>Inverse of STRIDE"]
-    end
 </div>
 {% endraw %}
 
@@ -132,11 +114,9 @@ These model-centric methods address both "what are we working on" and "what coul
 
 **Cons:** Needs asset context added -- when inverting a user story into an abuse case, you sometimes lack the right asset name or need more context on what's actually affected.
 
-## Attacker-Centric (Possibly Avoid)
+## Attacker-Centric
 
-*Note: This is meant for highly classified government targets, not the medical device industry.*
-
-Attack trees are goal/adversary-centric: they answer *how* an attacker would actually realize a threat, not so much *what* threats exist. If you must use this approach, only use it for high-priority threats (which requires a method to determine "high-profile").
+Attack trees are goal/adversary-centric: they answer *how* an attacker would actually realize a threat, not so much *what* threats exist. This approach works best when paired with high-priority threats.
 
 **To Start:** Characterize your attacker's capabilities (e.g. APT28). From there, enumerate possible threats/attacks from their techniques, tactics, and procedures (TTPs).
 

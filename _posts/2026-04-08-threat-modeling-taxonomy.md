@@ -14,6 +14,7 @@ When we say "centric", we are speaking to what is used as **input** to generate 
 
 ## The Taxonomy
 
+{% raw %}
 <div class="mermaid">
 graph LR
     subgraph Q1Q2["Q1+Q2: Scope, Enumerate, Invert"]
@@ -89,6 +90,7 @@ graph LR
         PRIV["LINDDUN<br>---<br>Threats flow outward:<br>System to User<br>(not attacker to system)<br>Inverse of STRIDE"]
     end
 </div>
+{% endraw %}
 
 ## A Note on STRIDE and the Four Questions
 

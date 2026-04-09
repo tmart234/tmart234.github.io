@@ -70,19 +70,19 @@ This is the single most important framework I can leave you with. Internalize th
 <div class="mermaid">
 block-beta
     columns 1
-    block:tooling["🔧 5. Tooling":1]
+    block:tooling["🔧 5. Tooling"]:1
         t1["Scanners"] t2["SIEMs"] t3["Fuzzers"] t4["Pentest Suites"]
     end
-    block:coding["💻 4. Coding / Math":1]
+    block:coding["💻 4. Coding / Math"]:1
         c1["Scripting"] c2["Crypto Fundamentals"] c3["Logic"] c4["Automation"]
     end
-    block:tech["⚙️ 3. Technology":1]
+    block:tech["⚙️ 3. Technology"]:1
         te1["Networking"] te2["Operating Systems"] te3["Cloud"] te4["Embedded Systems"]
     end
-    block:process["📋 2. Processes":1]
+    block:process["📋 2. Processes"]:1
         p1["Vuln Management"] p2["Incident Response"] p3["Secure SDLC"] p4["Disclosure"]
     end
-    block:concepts["🧠 1. Concepts (Layer 0)":1]
+    block:concepts["🧠 1. Concepts (Layer 0)"]:1
         co1["Risk"] co2["Threat Modeling"] co3["CIA Triad"] co4["Attack Surfaces"]
     end
 
@@ -111,6 +111,8 @@ The basics of hardening, patching, and privilege reduction haven't changed in 20
 ## Further Reading
 
 The "Processes" layer of the stack deserves special attention. Over 25 years ago, Bruce Schneier wrote what remains one of the best articulations of this idea. His thesis: **security is a process, not a product**. Products provide some protection, but the only way to effectively operate in an insecure world is to put processes in place that recognize the inherent insecurity in the products. Prevention, detection, and response are ongoing and never finished.
+
+Quality engineering learned this same lesson. **Quality is a process, not a checkbox.** Post-market surveillance, secure SDLC, vulnerability management -- these are quality disciplines applied to security. The engineer who says "we ran the scan, we're done" has a product mindset. The one who asks "what did we learn from the last incident and how do we prevent the next one?" has a process mindset. But process alone isn't enough. You also need a **systems mindset** -- one that understands how components fit together, what the requirements actually are, and where trust boundaries live. Threat modeling, network segmentation, understanding how a device's cloud API interacts with a clinical network -- that's systems thinking. Process thinking keeps you improving. Systems thinking tells you *what* to improve. A vulnerability management program (process) is only as good as the asset inventory and architecture understanding (systems) behind it. You need both.
 
 If you read one thing after this post, make it <a href="https://www.schneier.com/essays/archives/2000/04/the_process_of_secur.html">The Process of Security</a> by Bruce Schneier (April 2000). It's short, it's free, and it will reframe how you think about everything above.
 

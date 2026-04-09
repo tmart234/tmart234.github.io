@@ -4,6 +4,7 @@ highlighter:      rouge
 
 permalink: /:title/
 paginate: 5
+future: true
 
 # Setup
 title:            Let's Talk About MedSec

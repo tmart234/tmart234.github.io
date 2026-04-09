@@ -22,7 +22,7 @@ graph LR
     subgraph Q1Q2["Q1+Q2: Scope, Enumerate, Invert"]
         direction TB
 
-        subgraph inputs["Generative Inputs (enumerate &rarr; invert &rarr; threats)"]
+        subgraph inputs["Generative Inputs (enumerate → invert → threats)"]
             direction TB
             A["Asset-Centric<br>---<br>Crown jewels, services,<br>hardware, credentials,<br>dependencies, infrastructure"]
 

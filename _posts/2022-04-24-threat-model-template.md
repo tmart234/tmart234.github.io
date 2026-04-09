@@ -3,8 +3,6 @@ layout: post
 title: Threat Modeling Knowledge Bases and Templates
 ---
 
-# Threat Modeling Knowledge Bases and Templates
-
 A mix of frustrations, aspirations, and unsolicited opinions regarding the current state of Threat Modeling are initially what prompted me to write this post.
 
 First some clarification up front. When I talk about threat model templates, threat knowledge bases, or custom threat lists then I’m roughly talking about the same thing. Threat knowledge bases are a database of pre-defined threats that capture the current threat landscape. The more precise a knowledge base aligns with your model’s use case, then the higher value it provides. Templates usually include a knowledge base while also including other things like the DFD elements, their properties, and logic to tie knowledge base with the DFD elements.

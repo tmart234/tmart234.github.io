@@ -3,7 +3,7 @@ layout: post
 title: "Threat Models and Risk on the River"
 ---
 
-Threat models and risk assessments are universal. If you have the mentality, you can consistently apply it in all aspects of life. I spend a lot of time thinking about medical device security, but I also spend a lot of time on whitewater rivers. The crossover between the two is striking -- not in a forced metaphor kind of way, but in a "these are genuinely the same cognitive processes" kind of way.
+Threat models and risk assessments are universal. If you have the mentality, you can consistently apply it in all aspects of life. I spend a lot of time thinking about medical device security, but I also spend a lot of time on rivers doing whitewater rzfting and kayaking. The crossover between the two is striking.
 
 Here's how the same risk thinking shows up in both domains.
 
@@ -52,7 +52,3 @@ This is defense in depth. Cybersecurity uses multiple layers of controls and reh
 But gear alone isn't enough. The paddler who carries a throw rope but has never practiced throwing one is carrying dead weight. The security team with an incident response plan that's never been tabletop-exercised is in the same position. Think through every scenario that could go wrong. Have the emergency plan. And better yet, know how to execute it because you've practiced.
 
 Prepare for your threat model to fail. That's not pessimism. That's engineering.
-
----
-
-The deeper I get into both of these worlds, the more I'm convinced the underlying discipline is identical. Identify what can go wrong. Plan for the most likely scenarios. Update when you learn more. Monitor during execution. Accept that failure happens. Prepare for it anyway. Whether you're looking at a Class V rapid or a connected medical device in a surgical suite, the thinking is the same. The stakes are just different flavors of serious.

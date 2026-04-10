@@ -51,4 +51,6 @@ This is defense in depth. Cybersecurity uses multiple layers of controls and reh
 
 But gear alone isn't enough. The paddler who carries a throw rope but has never practiced throwing one is carrying dead weight. The security team with an incident response plan that's never been tabletop-exercised is in the same position. Think through every scenario that could go wrong. Have the emergency plan. And better yet, know how to execute it because you've practiced.
 
-Prepare for your threat model to fail. That's not pessimism. That's engineering.
+Prepare for your threat model to fail.
+
+SYOTR 🫳

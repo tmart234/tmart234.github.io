@@ -3,7 +3,7 @@ layout: post
 title: "Threat Models and Whitewater River Paddling"
 ---
 
-Threat models and risk assessments are universal. If you have the mentality, you can consistently apply it in all aspects of life. I spend a lot of time thinking about medical device security, but I also spend a lot of time on rivers doing whitewater rzfting and kayaking. The crossover between the two is striking.
+Threat models and risk assessments are universal. If you have the mentality, you can consistently apply it in all aspects of life. I spend a lot of time thinking about medical device security, but I also spend a lot of time on rivers doing whitewater rafting and kayaking. The crossover between the two is striking.
 
 Here's how the same risk thinking shows up in both domains.
 

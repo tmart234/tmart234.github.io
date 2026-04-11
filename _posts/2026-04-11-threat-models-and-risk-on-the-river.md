@@ -15,7 +15,7 @@ Paddlers don't get to remove the rocks from the river. Security teams don't get 
 
 ## 2. A Solid Plan and Threat Model is 🔑
 
-When preparing for difficult whitewater, paddlers study river features before ever getting to the put-in. This comes from a collection of known information -- what paddlers call "beta." Beta is the aggregate knowledge from guidebooks, trip reports, gauge readings, and the guy at the gas station who's lived on that river for forty years. Beta creates the initial mental threat model you use to avoid danger.
+When preparing for difficult whitewater, paddlers study river features before ever getting to the river (put-in). This comes from a collection of known information -- what paddlers call "beta." Beta is the aggregate knowledge from guidebooks, trip reports, gauge readings, and the guy at the gas station who's lived on that river for forty years. Beta creates the initial mental threat model you use to avoid danger.
 
 After studying beta, you mitigate by planning according to least risky options. That might look something like "go river left at the first rapid to avoid the center rock ledge" or "portage the horizon line if the gauge is above 3.5 feet." You haven't seen the river yet. But you've built an initial model based on the best available information, and that model drives your first set of decisions.
 
@@ -25,9 +25,9 @@ This is exactly what happens in a premarket threat model. You study the architec
 
 At the river, the paddler will scout rapids. Scouting is the act of stopping, getting out of the boat, and inspecting rapids or other hazards from a safe location -- usually from shore or an elevated rock. You compare what you're seeing to the beta you studied. Sometimes the beta was right. Sometimes the water level changed everything. Sometimes the beta was ten years old and a flood rearranged half the riverbed.
 
-Threat modeling is never a one-and-done activity. Each time new information appears -- a scouting view, a vulnerability disclosure, a change in deployment architecture, a new software dependency -- the paddler updates their mental threat model, reassesses the risk, and considers how they will mitigate it during the run. Maybe the line you planned doesn't work at this water level. Maybe the control you designed doesn't cover the threat you just identified. Either way, you adapt the model or you're running blind.
+Threat modeling is never a one-and-done activity. Initial assumptiins break. Each time new information appears -- a scouting view, a vulnerability disclosure, a change in deployment architecture, a new software dependency -- the paddler updates their mental threat model, reassesses the risk, and considers how they will mitigate it during the run. Maybe the line you planned doesn't work at this water level. Maybe the control you designed doesn't cover the threat you just identified. Either way, you adapt the model or you're running blind.
 
-The teams that treat their threat model as a static document delivered once during design review are the teams that get surprised. The paddlers who only read the guidebook and never scout are the ones who swim.
+The teams that treat their threat model as a static document delivered once during design review are the teams that get surprised. The paddlers who only go off Beta/previous knowledge stand a higher potentil to incur risk (swim).
 
 ## 4. Real-Time Monitoring 👀
 

@@ -240,6 +240,20 @@ a.sidebar-nav-item:focus {
   color: #aa759f;
 }
 
+/*
+ * Comments
+ */
+
+.comments {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.comments h2 {
+  margin-bottom: 1rem;
+}
+
 /* Brown */
 .theme-base-0f .sidebar {
   background-color: #8f5536;

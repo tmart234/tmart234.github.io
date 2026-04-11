@@ -12,7 +12,7 @@ In the threat modeling context, threats lead to potential (or unconfirmed) vulne
 
 When we say "centric", we are speaking to what is used as **input** to generate outputs (threats).
 
-![Threat modelling approach]({{ site.baseurl }}/public/threat-modelling-approach.jpg)
+![Threat modelling approach]({{ site.baseurl }}/public/threat-model-centric.JPG)
 
 ## The Taxonomy
 

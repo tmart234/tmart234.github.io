@@ -27,7 +27,7 @@ nmap -A <target>
 
 Now we're getting somewhere. With NMAP's default scripts enabled (`-sC` or `-A`), the `dicom-ping` script runs automatically. But here's the thing most people don't realize: this "ping" is not a real DICOM ping. It never sends a C-ECHO. It only does the first half — the A-ASSOCIATE request/response handshake.
 
-![DICOM A-ASSOCIATE negotiation]({{ site.baseurl }}/public/dicom-associate-negotiation.png)
+![DICOM A-ASSOCIATE negotiation]({{ site.baseurl }}/public/spec_associate.PNG)
 
 A successful association or even an AE-reject response is enough for NMAP to report: **"DICOM Service Provider discovered!"** That's it. The script sees the server speak DICOM and calls it a day. No C-ECHO, no verification of actual DICOM service capability. Just the handshake.
 
@@ -61,7 +61,7 @@ Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fan
 
 After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there in the packet. No extra network traffic needed.
 
-![A-ASSOCIATE-AC PDU structure]({{ site.baseurl }}/public/dicom-associate-ac-pdu.png)
+![A-ASSOCIATE-AC PDU structure]({{ site.baseurl }}/public/associate_pdu.jpg)
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested TLV (Type-Length-Value) structures. Two of them are gold:
 
@@ -73,7 +73,7 @@ The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) cont
 
 The beauty of this approach is that it piggybacks on the existing dicom-ping flow. No additional packets, no extra noise on the network. The A-ASSOCIATE-AC response that NMAP already receives during its "ping" contains everything we need.
 
-![Nmap DICOM ping sequence]({{ site.baseurl }}/public/dicom-nmap-ping-sequence.png)
+![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
 
 NMAP sends the A-ASSOCIATE-RQ, the server responds with A-ASSOCIATE-AC, and now instead of just checking "did it respond?" we also parse the vendor and version out of the response. Then we drop the connection. The C-ECHO phase that would make this a "real" DICOM ping is still skipped entirely — we already got what we needed.
 

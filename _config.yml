@@ -20,3 +20,11 @@ author:
 
 plugins:
   - jekyll-paginate
+
+# Giscus comments (https://giscus.app)
+# To get your category_id: visit https://giscus.app, enter your repo, select "General", and copy the data-category-id value
+giscus:
+  repo: tmart234/tmart234.github.io
+  repo_id: MDEwOlJlcG9zaXRvcnk0MDQxMjkyMjM=
+  category: General
+  category_id: REPLACE_WITH_YOUR_CATEGORY_ID

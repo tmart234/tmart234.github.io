@@ -5,6 +5,8 @@ title: "Medical Device Security: The IT vs OT Security Debate"
 
 Medical device product security doesn't fit cleanly into a strict IT or OT security categorization — but if you had to say, they lean OT with IT assets. Let's break down why and where either analogy breaks.
 
+![IT vs OT](https://www.jeffwinterinsights.com/s/IT-Vs-OT.jpg)
+
 ## The IT vs OT Baseline
 
 IT security is confidentiality-first, data-centric, patch-friendly, and built around short hardware lifecycles. OT security flips the priorities: safety and availability come first, processes are sacred, change is dangerous, and assets live for decades.

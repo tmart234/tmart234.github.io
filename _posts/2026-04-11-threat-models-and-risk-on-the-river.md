@@ -25,6 +25,8 @@ This is exactly what happens in a premarket threat model. You study the architec
 
 At the river, the paddler will scout rapids. Scouting is the act of stopping, getting out of the boat, and inspecting rapids or other hazards from a safe location -- usually from shore or an elevated rock. You compare what you're seeing to the beta you studied. Sometimes the beta was right. Sometimes the water level changed everything. Sometimes the beta was ten years old and a flood rearranged half the riverbed.
 
+![Scouting rapids from shore](https://media.oars.com/wp-content/uploads/2022/08/21063353/Crystal.jpg)
+
 Threat modeling is never a one-and-done activity. Initial assumptiins break. Each time new information appears -- a scouting view, a vulnerability disclosure, a change in deployment architecture, a new software dependency -- the paddler updates their mental threat model, reassesses the risk, and considers how they will mitigate it during the run. Maybe the line you planned doesn't work at this water level. Maybe the control you designed doesn't cover the threat you just identified. Either way, you adapt the model or you're running blind.
 
 The teams that treat their threat model as a static document delivered once during design review are the teams that get surprised. The paddlers who only go off Beta/previous knowledge stand a higher potentil to incur risk (swim).
@@ -44,6 +46,8 @@ In cybersecurity, breaches or attacks happen despite your best efforts. The "eve
 This mentality is healthy. It doesn't mean you stop trying to stay in the boat. It means you plan for what happens when you don't. It means you practice your roll, your wet exit, your self-rescue -- because the swim is coming eventually, and the only variable is how well you handle it.
 
 ## 6. Redundancy and Preparation 🛟
+
+![River rescue training](https://www.whitewaterrescue.com/wp-content/uploads/2017/07/2017_WRI_066_Med.jpg)
 
 Paddlers carry rescue gear, backup items, and have practiced rescue in similar scenarios. A swimming paddler may need a throw rope to get pulled to shore. Your boat may need a pin kit to get unstuck from a rock. You carry a breakdown paddle, a first aid kit, a whistle, a knife. You carry all of this knowing that most of it stays in your boat most days -- and that the one day you need it, nothing else matters.
 

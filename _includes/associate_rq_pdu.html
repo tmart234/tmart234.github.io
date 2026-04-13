@@ -1,0 +1,56 @@
+<div style="font-family: monospace; width: 650px; border: 3px solid #333; border-radius: 8px; overflow: hidden; text-align: center; margin: 20px auto; background-color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+
+    <div style="background-color: #333; color: #FFF; padding: 12px; font-size: 1.2em; text-transform: uppercase; letter-spacing: 1px;">
+        <strong>A-ASSOCIATE-RQ PDU</strong>
+    </div>
+
+    <div style="background-color: #56B4E9; color: #000; padding: 15px; border-bottom: 2px solid #333;">
+        <strong style="font-size: 1.1em;">Fixed Header (74 Bytes)</strong><br>
+        <div style="font-size: 0.85em; margin-top: 5px;">PDU Type (0x01) | Version | Called AE Title | Calling AE Title | Reserved</div>
+    </div>
+
+    <div style="background-color: #FAFAFA; color: #666; padding: 10px; border-bottom: 2px solid #333; font-style: italic;">
+        ... Application Context (0x10) | Presentation Contexts (0x20) ...
+    </div>
+
+    <div style="background-color: #009E73; padding: 15px; text-align: left;">
+
+        <div style="color: #FFF; text-align: center; margin-bottom: 15px;">
+            <strong style="font-size: 1.2em;">Item Type = 0x50 (User Information)</strong>
+        </div>
+
+        <div style="background-color: #E5E5E5; color: #000; padding: 8px; margin-bottom: 10px; border: 1px solid #333; border-radius: 4px; font-size: 0.9em;">
+            <strong>0x51</strong> Max PDU Length &nbsp;|&nbsp; <strong>0x52</strong> Impl. Class UID &nbsp;|&nbsp; <strong>0x55</strong> Impl. Version Name
+        </div>
+
+        <div style="background-color: #D55E00; color: #FFF; padding: 12px; border-radius: 6px; border: 4px solid #CC0000; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+            <strong style="font-size: 1.1em;">Type 0x58: User Identity Sub-Item</strong>
+            <em style="font-size: 0.8em; opacity: 0.9;">(Optional &mdash; PS3.15 Auth Surface)</em>
+
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <div style="flex: 1; background-color: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; font-size: 0.85em;">
+                    <strong>User-Identity-Type</strong><br>
+                    1 = Username<br>
+                    2 = Username + Passcode<br>
+                    3 = Kerberos<br>
+                    4 = SAML<br>
+                    5 = JWT
+                </div>
+                <div style="flex: 1.4; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="background-color: rgba(255,255,255,0.15); padding: 8px; border-radius: 4px; font-size: 0.85em;">
+                        <strong>Positive-response-requested:</strong> 0 or 1<br>
+                        <em style="font-size: 0.9em;">(If 1, server includes 0x59 sub-item in AC)</em>
+                    </div>
+                    <div style="background-color: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; font-size: 0.85em;">
+                        <strong>Primary-field:</strong> Username, Kerberos ticket, SAML assertion, or JWT
+                    </div>
+                    <div style="background-color: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; font-size: 0.85em;">
+                        <strong>Secondary-field:</strong> Passcode<br>
+                        <em style="font-size: 0.9em;">(Only present when Type = 2)</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

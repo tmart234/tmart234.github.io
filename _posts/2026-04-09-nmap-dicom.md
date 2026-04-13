@@ -50,7 +50,7 @@ That said, there are some edge cases. [DICOM PS3.15](https://dicom.nema.org/medi
 - **TLS-based Secure Transport Connection Profiles** — certificate-based mutual authentication over TLS (BCP 195 profiles).
 - **User Identity Negotiation** (via the A-ASSOCIATE User Identity sub-item) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
 
-So theoretically, even with an accepted AE title, you *might* encounter real authentication further down the line. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. NMAP's `dicom-brute` only chews on AE Titles, never on the User Identity sub-item, which is the actual PS3.15 auth surface. Once you've completed the A-ASSOCIATE, defeating PS3.15 username/passcode is a pretty straightforward Scapy script: point it at a username wordlist (SecLists medical-devices, a top-10, whatever fits the target), a password wordlist (rockyou.txt works fine), and just cycle every combination through the User Identity sub-item until something sticks. I'll put that up as its own [DICOM Scapy](#) article (TBD — I'll drop the link here once it's out).
+So theoretically, even with an accepted AE title, the server *might* also require User Identity credentials — but this is checked during the same A-ASSOCIATE handshake, not after it. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. Because the rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if User Identity is in play.
 
 ### 4. AE Title Brute Force
 
@@ -75,6 +75,8 @@ Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fan
 After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there in the packet. No extra network traffic needed.
 
 ![A-ASSOCIATE-AC PDU structure]({{ site.baseurl }}/public/associate_pdu.jpg)
+
+*Note: The AC's User Identity sub-item (type 0x59) only contains a Server-response field (e.g. a Kerberos ticket or SAML response) — it's zero-length for username/passcode auth types. The username and passcode fields shown above only exist in the RQ's sub-item (type 0x58).*
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested TLV (Type-Length-Value) structures. Two of them are gold:
 
@@ -102,7 +104,11 @@ I keep coming back to this because it bears repeating. DICOM AE Titles are **not
 
 Could there be actual authentication required for specific DICOM actions even after association? Yes — PS3.15's TLS and User Identity Negotiation profiles above — but the reality on most systems I've encountered is that once you're past the AE Title, you're in.
 
-This is where my Scapy DICOM work comes in handy — for scripting out the next steps of an assessment beyond what NMAP provides. Once you've fingerprinted the vendor and version with NMAP, you know exactly what you're dealing with and can tailor your approach accordingly.
+This is where my Scapy DICOM work comes in handy — for scripting out the next steps of an assessment beyond what NMAP provides. Once you've fingerprinted the vendor and version with NMAP, you know exactly what you're dealing with and can tailor your approach accordingly. And because the A-ASSOCIATE rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if PS3.15 User Identity is in play.
+
+{% include associate_rq_pdu.html %}
+
+One caveat: even after a successful association, some implementations use the User Identity information to scope DIMSE-level authorization — so "associated" doesn't always mean "full access." Your C-FIND might return nothing, or your C-STORE might get refused, based on who you authenticated as.
 
 ## Why This Matters
 

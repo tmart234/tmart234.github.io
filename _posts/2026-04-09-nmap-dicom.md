@@ -31,13 +31,26 @@ Now we're getting somewhere. With NMAP's default scripts enabled (`-sC` or `-A`)
 
 A successful association or even an AE-reject response is enough for NMAP to report: **"DICOM Service Provider discovered!"** That's it. The script sees the server speak DICOM and calls it a day. No C-ECHO, no verification of actual DICOM service capability. Just the handshake.
 
+#### How This Works in Practice
+
+Since everything NMAP does for DICOM — discovery, "insecure AET" detection, brute force, and the vendor/version fingerprinting I'll get to below — rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
+
+![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
+
+NMAP sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and NMAP drops the connection. The C-ECHO phase that would make this a "real" DICOM ping is skipped entirely. Every NMAP DICOM feature is built on parsing whatever comes back in that single response — no extra packets, no extra noise on the network. Keep this mental model in mind for the rest of the article.
+
 ### 3. "Any AET is Accepted (Insecure)"
 
 This is where it gets spicy. If NMAP's dicom-ping gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: **"Any AET is accepted (Insecure)"**.
 
 Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM systems repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL. The door is wide open.
 
-That said, there are some edge cases. DICOM PS3.15 does define actual authentication mechanisms for DICOM actions. So theoretically, even with an accepted AE title, you *might* encounter real authentication further down the line. In practice? Don't count on it.
+That said, there are some edge cases. [DICOM PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines actual authentication mechanisms that *can* be negotiated on top of the association. Specifically, it covers:
+
+- **TLS-based Secure Transport Connection Profiles** — certificate-based mutual authentication over TLS (BCP 195 profiles).
+- **User Identity Negotiation** (via the A-ASSOCIATE User Identity sub-item) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
+
+So theoretically, even with an accepted AE title, you *might* encounter real authentication further down the line. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. NMAP's `dicom-brute` only chews on AE Titles, never on the User Identity sub-item, which is the actual PS3.15 auth surface. Once you've completed the A-ASSOCIATE, defeating PS3.15 username/passcode is a pretty straightforward Scapy script: point it at a username wordlist (SecLists medical-devices, a top-10, whatever fits the target), a password wordlist (rockyou.txt works fine), and just cycle every combination through the User Identity sub-item until something sticks. I'll put that up as its own [DICOM Scapy](#) article (TBD — I'll drop the link here once it's out).
 
 ### 4. AE Title Brute Force
 
@@ -65,23 +78,29 @@ After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script alr
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested TLV (Type-Length-Value) structures. Two of them are gold:
 
-**Implementation Class UID (Type 0x52):** This contains an OID (Object Identifier). The root of that OID can be looked up in an OID registry. For example, `1.2.276.0.7230010` maps to OFFIS, the organization behind DCMTK. That's verifiable traceability to a DICOM vendor — not some heuristic guess, but an actual registered identifier.
+**Implementation Class UID (Type 0x52):** An OID (Object Identifier) whose root can be looked up in an OID registry. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK. On paper this is the "who built this" field — as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM stack.
 
-**Implementation Version Name (Type 0x55):** This is a string that can be parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9. Straightforward.
+**Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9.
 
-### How It Works in Practice
+#### Why You Need to Look Up Both
 
-The beauty of this approach is that it piggybacks on the existing dicom-ping flow. No additional packets, no extra noise on the network. The A-ASSOCIATE-AC response that NMAP already receives during its "ping" contains everything we need.
+We had a lot of back-and-forth on the PR about which of these two actually matters, and the answer is: both, for different reasons.
 
-![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
+In theory `0x52` is the authoritative vendor identifier. In practice, lazy vendors ship devices with a third-party stack (DCMTK, dcm4che, pynetdicom) and never override the Implementation Class UID or Version Name. So `0x52` happily reports "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
 
-NMAP sends the A-ASSOCIATE-RQ, the server responds with A-ASSOCIATE-AC, and now instead of just checking "did it respond?" we also parse the vendor and version out of the response. Then we drop the connection. The C-ECHO phase that would make this a "real" DICOM ping is still skipped entirely — we already got what we needed.
+The PR handles this by doing registry lookups on **both** fields independently and surfacing what each one says:
+
+- If `0x52` and `0x55` agree on the underlying stack, you've got a confident fingerprint.
+- If they disagree, that's itself a useful signal — someone customized one but not the other.
+- If both point at a well-known open-source stack on a commercial device, you've just caught a lazy OEM integration.
+
+From a pentester's point of view, `0x55` is the one I reach for first. Implementation *Class* is about the vendor's identity on paper, but the Version Name tends to track the code that's actually on the wire parsing your PDUs. That's the attack surface — the version string tells you which library's bugs you get to play with, regardless of whose logo is on the chassis.
 
 ### AE Titles Are Not Authentication
 
 I keep coming back to this because it bears repeating. DICOM AE Titles are **not** authentication. They're closer to an ACL. "Any AE Title accepted" is the equivalent of a wildcard in your access control list. It means anyone who speaks DICOM can walk in.
 
-Could there be actual authentication required for specific DICOM actions even after association? Yes, PS3.15 covers that. But the reality on most systems I've encountered is that once you're past the AE Title, you're in.
+Could there be actual authentication required for specific DICOM actions even after association? Yes — PS3.15's TLS and User Identity Negotiation profiles above — but the reality on most systems I've encountered is that once you're past the AE Title, you're in.
 
 This is where my Scapy DICOM work comes in handy — for scripting out the next steps of an assessment beyond what NMAP provides. Once you've fingerprinted the vendor and version with NMAP, you know exactly what you're dealing with and can tailor your approach accordingly.
 

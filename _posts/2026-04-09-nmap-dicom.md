@@ -49,9 +49,8 @@ That said, there are some edge cases. [DICOM PS3.15](https://dicom.nema.org/medi
 
 - **TLS-based Secure Transport Connection Profiles** — certificate-based mutual authentication over TLS (BCP 195 profiles).
 - **User Identity Negotiation** (via the A-ASSOCIATE User Identity sub-item) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
-- **ISCL** (Integrated Secure Communication Layer) — legacy symmetric-key profile, still referenced but rarely seen in the wild.
 
-So theoretically, even with an accepted AE title, you *might* encounter real authentication further down the line. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. NMAP doesn't currently go after User Identity Negotiation, but the A-ASSOCIATE User Identity sub-item is very much brute-forceable with [DICOM Scapy](#) (TBD article — I'll drop a link here once it's up). That's a gap worth keeping in mind: `dicom-brute` only chews on AE Titles, not on the actual authentication sub-item PS3.15 defines.
+So theoretically, even with an accepted AE title, you *might* encounter real authentication further down the line. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. NMAP's `dicom-brute` only chews on AE Titles, never on the User Identity sub-item, which is the actual PS3.15 auth surface. Once you've completed the A-ASSOCIATE, defeating PS3.15 username/passcode is a pretty straightforward Scapy script: point it at a username wordlist (SecLists medical-devices, a top-10, whatever fits the target), a password wordlist (rockyou.txt works fine), and just cycle every combination through the User Identity sub-item until something sticks. I'll put that up as its own [DICOM Scapy](#) article (TBD — I'll drop the link here once it's out).
 
 ### 4. AE Title Brute Force
 
@@ -79,7 +78,7 @@ After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script alr
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested TLV (Type-Length-Value) structures. Two of them are gold:
 
-**Implementation Class UID (Type 0x52):** An OID (Object Identifier) whose root can be looked up in an OID registry. For example, `1.2.276.0.7230010` maps to OFFIS, the organization behind DCMTK. On paper this is the "who built this" field — as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM stack.
+**Implementation Class UID (Type 0x52):** An OID (Object Identifier) whose root can be looked up in an OID registry. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK. On paper this is the "who built this" field — as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM stack.
 
 **Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9.
 

@@ -43,7 +43,7 @@ NMAP sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept
 
 This is where it starts getting spicy. If NMAP's dicom-ping gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: **"Any AET is accepted (Insecure)"**.
 
-Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM systems repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL. The door is wide open.
+Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM systems repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL — a lightweight authorization control, not a cryptographic one. The door is wide open.
 
 That said, there are some edge cases. [DICOM PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines actual authentication mechanisms that *can* be negotiated on top of the association. Specifically, it covers:
 
@@ -74,9 +74,9 @@ Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fan
 
 After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there in the packet. No extra network traffic needed.
 
-![A-ASSOCIATE-AC PDU structure]({{ site.baseurl }}/public/associate_pdu.jpg)
+{% include associate_ac_pdu.html %}
 
-*Note: The AC's User Identity sub-item (type 0x59) only contains a Server-response field (e.g. a Kerberos ticket or SAML response) — it's zero-length for username/passcode auth types. The username and passcode fields shown above only exist in the RQ's sub-item (type 0x58).*
+*Note: The AC's 0x59 sub-item (shown above) only carries a Server-response field — no username or passcode. Those credential fields exist only in the RQ's sub-item (type 0x58), shown in the diagram below.*
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested TLV (Type-Length-Value) structures. Two of them are gold:
 
@@ -100,7 +100,7 @@ From a pentester's point of view, `0x55` is the one I reach for first. Implement
 
 ### AE Titles Are Not Authentication
 
-I keep coming back to this because it bears repeating. DICOM AE Titles are **not** authentication. They're closer to an ACL. "Any AE Title accepted" is the equivalent of a wildcard in your access control list. It means anyone who speaks DICOM can walk in.
+I keep coming back to this because it bears repeating. DICOM AE Titles are **not** authentication. They're closer to an ACL — they control authorization, just weakly. "Any AE Title accepted" is the equivalent of a wildcard in your access control list. It means anyone who speaks DICOM can walk in.
 
 Could there be actual authentication required for specific DICOM actions even after association? Yes — PS3.15's TLS and User Identity Negotiation profiles above — but the reality on most systems I've encountered is that once you're past the AE Title, you're in.
 
@@ -108,7 +108,7 @@ This is where my Scapy DICOM work comes in handy — for scripting out the next 
 
 {% include associate_rq_pdu.html %}
 
-One caveat: even after a successful association, some implementations use the User Identity information to scope DIMSE-level authorization — so "associated" doesn't always mean "full access." Your C-FIND might return nothing, or your C-STORE might get refused, based on who you authenticated as.
+One caveat: even after a successful association, some implementations use the AE Title or User Identity information to scope DIMSE-level authorization — so "associated" doesn't always mean "full access." Your C-FIND might return nothing, or your C-STORE might get refused, based on which AE Title or User Identity credentials were negotiated.
 
 ## Why This Matters
 

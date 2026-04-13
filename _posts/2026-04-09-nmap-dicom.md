@@ -3,7 +3,7 @@ layout: post
 title: "NMAP's Hidden DICOM Support"
 ---
 
-Most people don't know that NMAP, the port scanning tool everyone and their mother has used, actually supports DICOM. And not in some half-baked "we added a port number" way. There are real NSE scripts doing real DICOM protocol work. As someone who works on medical devices, I felt the need to break this down because the default tooling should have been doing more here all along.
+Most people don't know that NMAP, the port scanning tool everyone and their grandma has used, actually supports DICOM. And not in some half-baked way.. but there are real NSE scripts doing real protocol level work. As someone who works on medical devices, I felt the need to break down a few DICOM security concepts so you can better understand how to use the supported tooling.
 
 ## What NMAP Already Does for DICOM
 
@@ -31,7 +31,7 @@ Now we're getting somewhere. With NMAP's default scripts enabled (`-sC` or `-A`)
 
 A successful association or even an AE-reject response is enough for NMAP to report: **"DICOM Service Provider discovered!"** That's it. The script sees the server speak DICOM and calls it a day. No C-ECHO, no verification of actual DICOM service capability. Just the handshake.
 
-#### How This Works in Practice
+#### How This Works
 
 Since everything NMAP does for DICOM — discovery, "insecure AET" detection, brute force, and the vendor/version fingerprinting I'll get to below — rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
 
@@ -41,7 +41,7 @@ NMAP sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept
 
 ### 3. "Any AET is Accepted (Insecure)"
 
-This is where it gets spicy. If NMAP's dicom-ping gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: **"Any AET is accepted (Insecure)"**.
+This is where it starts getting spicy. If NMAP's dicom-ping gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: **"Any AET is accepted (Insecure)"**.
 
 Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM systems repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL. The door is wide open.
 

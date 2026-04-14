@@ -72,31 +72,28 @@ Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fan
 
 ### The Insight
 
-After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there in the packet. No extra network traffic needed.
+After looking at the DICOM A-ASSOCIATE packets that NMAP's dicom-ping script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there. No extra packets.
 
 {% include associate_ac_pdu.html %}
 
-*Note: The AC's 0x59 sub-item (shown above) only carries a Server-response field — no username or passcode. Those credential fields exist only in the RQ's sub-item (type 0x58), shown in the diagram below.*
+The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
 
-The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested TLV (Type-Length-Value) structures. Two of them are gold:
-
-**Implementation Class UID (Type 0x52):** An OID (Object Identifier) whose root can be looked up in an OID registry. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK. On paper this is the "who built this" field — as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM stack.
+**Implementation Class UID (Type 0x52):** An OID (Object Identifier) whose root can be looked up in an OID registry. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK. On paper this is the "who built this" device field — as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM thing.
 
 **Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9.
 
 #### Why You Need to Look Up Both
 
-We had a lot of back-and-forth on the PR about which of these two actually matters, and the answer is: both, for different reasons.
+I had a lot investigating about which of these actually matters, and the answer is: both, for different reasons.
 
-In theory `0x52` is the authoritative vendor identifier. In practice, lazy vendors ship devices with a third-party stack (DCMTK, dcm4che, pynetdicom) and never override the Implementation Class UID or Version Name. So `0x52` happily reports "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
+In theory `0x52` is the authoritative vendor identifier for who manufactured the device. In practice, lazy vendors ship devices with a third-party stack (DCMTK, dcm4che, pynetdicom) and never override the Implementation Class UID or Version Name. So `0x52` happily reports "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
 
-The PR handles this by doing registry lookups on **both** fields independently and surfacing what each one says:
+The PR handles this by doing table lookups on **both** fields independently and surfacing what each one says:
 
-- If `0x52` and `0x55` agree on the underlying stack, you've got a confident fingerprint.
-- If they disagree, that's itself a useful signal — someone customized one but not the other.
-- If both point at a well-known open-source stack on a commercial device, you've just caught a lazy OEM integration.
+- If `0x52` and `0x55 disagree, that's a useful signal than an OEM customized it and you should look up the OID to find who the manufacturer is.
+- If both point at a well-known open-source stack, that could likely be a lazy DICOM implementation. The manufacturer likely didn't register an OID.
 
-From a pentester's point of view, `0x55` is the one I reach for first. Implementation *Class* is about the vendor's identity on paper, but the Version Name tends to track the code that's actually on the wire parsing your PDUs. That's the attack surface — the version string tells you which library's bugs you get to play with, regardless of whose logo is on the chassis.
+From a pentester's point of view, `0x55` is probably the most important. Implementation *Class* is about the OEM vendor's identity on paper, but the Version Name tends to track the code that's actually on the wire parsing your PDUs. That's the attack surface — the version string tells you which library's bugs you get to play with, regardless of whose DICOM product you're testing.
 
 ### AE Titles Are Not Authentication
 

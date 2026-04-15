@@ -3,7 +3,7 @@ layout: post
 title: "Medical Device Security: The IT vs OT Security Debate"
 ---
 
-Medical device product security doesn't fit cleanly into a strict IT or OT security categorization — but if you had to say, they lean OT with IT assets. Let's break down why and where either analogy breaks.
+Medical device product security doesn't fit cleanly into a strict IT or OT security categorization — but if you had to say, they lean OT, as far as how to secure them, but with IT assets. Let's break down why and where either analogy breaks.
 
 ![IT vs OT](https://www.jeffwinterinsights.com/s/IT-Vs-OT.jpg)
 

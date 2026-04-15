@@ -7,7 +7,7 @@ paginate: 5
 future: true
 
 # Setup
-title:            Let's Talk About MedSec
+title:            Let's Talk About Med-Sec
 tagline:          'Security'
 description:      'unadulterated hot takes on medical device cybersecurity'
 baseurl:          ""

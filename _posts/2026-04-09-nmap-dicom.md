@@ -5,6 +5,44 @@ title: "DICOM Security 101: Understanding Network Protocol Security with Nmap"
 
 Most people don't know that Nmap, the port scanning tool everyone and their grandma has used, actually supports DICOM. And not in some half-baked way — there are real NSE scripts doing real protocol-level work. As someone who works on medical devices, I felt the need to break down a few DICOM security concepts so you can better understand how to use the supported tooling.
 
+## The Protocol at a Glance
+
+Before the Nmap tour, a minimum viable mental model. If you already live in this protocol you can skip ahead, but a lot of what follows only makes sense once you know what's being negotiated on the wire.
+
+### Ports
+
+| Service | Port(s) |
+| --- | --- |
+| DICOM (upper-layer protocol) | 104, 11112 |
+| DICOM over TLS | 2762 |
+| DICOMweb | 80, 443 |
+
+DICOMweb is the HTTP/REST sibling — WADO-RS, QIDO-RS, STOW-RS over plain HTTP(S). It's mostly out of scope for this post, but it's a rich target and there's real room for future NSE scripts pointed at it. Keeping this simple on purpose.
+
+### Presentation Contexts: SOP Classes and Transfer Syntaxes
+
+A-ASSOCIATE isn't just "here's my AE Title (AET), here are my credentials, let me in." It's a negotiation. The client proposes a list of **Presentation Contexts**, each one a pair of:
+
+- an **Abstract Syntax** — a SOP Class UID identifying *what* you want to do: Verification (C-ECHO), Storage, Query/Retrieve, Modality Worklist, and so on.
+- one or more **Transfer Syntaxes** — *how* the bytes are encoded on the wire: Implicit VR Little Endian, Explicit VR Little Endian, the JPEG family, RLE, and friends.
+
+The server accepts or rejects each one and hands back a Presentation Context ID. Those IDs are the gate — they decide which DIMSE operations the client can even ask for during the rest of the session. Propose Storage, get Storage accepted, now you can C-STORE. Don't propose it, or get it rejected, and you can't.
+
+From a security standpoint this is a big deal, and it's the part most "DICOM security" posts skip. Transfer syntax negotiation in particular is a documented fuzzing surface: downgrade to Implicit VR to strip type information, force uncompressed to dodge codec code paths, or pick a rarely-exercised JPEG variant to steer the peer onto the dusty, under-tested decoder. The negotiation itself is an attack primitive.
+
+### DIMSE Services
+
+DIMSE is the verb layer that rides on top of an accepted association. The ones you need to know:
+
+- `C-ECHO` — protocol ping. Are you alive and do you speak DICOM.
+- `C-STORE` — write a DICOM object to the peer. This is the "upload arbitrary DICOM to the PACS" surface. Everything about file-format fuzzing aims here.
+- `C-FIND` — query metadata. Patient lists, studies, series, Modality Worklist entries.
+- `C-MOVE` — tell the peer to send data to a third AE over a new association. Classic SSRF-adjacent — *you* pick the destination.
+- `C-GET` — pull data back on the existing association. Less common in the wild, mostly because `C-MOVE` exists.
+- Plus the **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) used by Modality Performed Procedure Step, Storage Commitment, Print, and other workflow/event-reporting SOP Classes.
+
+The mental model that makes the rest of the post click: **presentation contexts gate *what you can ask*, DIMSE services are *what you ask for*, and AE Titles gate *whether you're allowed to ask at all*.** Those are three different checks and real deployments get the layering wrong constantly.
+
 ## What Nmap Already Does for DICOM
 
 Nmap ships two DICOM-aware NSE scripts — `dicom-ping` and `dicom-brute` — plus the generic TCP port scanning you'd get on any service. I'll walk through them in order of increasing usefulness, then get to the vendor/version fingerprinting my unmerged PR adds.
@@ -29,7 +67,7 @@ A successful association or even an AE-reject response is enough for Nmap to rep
 
 #### How This Works
 
-Since everything Nmap does for DICOM — discovery, "insecure AET" detection, brute force, and the vendor/version fingerprinting I'll get to below — rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
+Since everything Nmap does for DICOM — discovery, "insecure AE Title" detection, brute force, and the vendor/version fingerprinting I'll get to below — rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
 
 ![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
 
@@ -45,10 +83,20 @@ Now let me be very clear about what AE Titles actually are. They're identifiers.
 
 That said, there are some edge cases. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines the User Identity Negotiation sub-item itself, and [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines the security profiles that put these mechanisms to use. Together they cover:
 
-- **TLS-based Secure Transport Connection Profiles** (PS3.15) — certificate-based mutual authentication over TLS (BCP 195 profiles).
+- **TLS-based Secure Transport Connection Profiles** (PS3.15) — certificate-based mutual authentication at the transport layer. Its own beast; see the next section.
 - **User Identity Negotiation** (PS3.7, via the A-ASSOCIATE User Identity sub-item, referenced by PS3.15 profiles like the Basic User Identity Association Profile and Kerberos Identity Negotiation Association Profile) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
 
-So theoretically, even with an accepted AE title, the server *might* also require User Identity credentials — but this is checked during the same A-ASSOCIATE handshake, not after it. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. Because the rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if User Identity is in play.
+So theoretically, even with an accepted AE Title, the server *might* also require User Identity credentials — but this is checked during the same A-ASSOCIATE handshake, not after it. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. Because the rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if User Identity is in play.
+
+### TLS: Specified, Rarely Deployed, Often Broken
+
+PS3.15 defines TLS profiles — including BCP 195-aligned ones — with mutual authentication. The spec is fine. The *deployments* are not.
+
+There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of real deployments just run TLS on 104 or 11112 because the vendor's config has exactly one "DICOM port" field and a "use TLS" checkbox. The port tells you very little on its own.
+
+Mutual TLS is rare in the field. When it exists, it's frequently server-auth only with the AE Title standing in as the "client identity" — which, per the previous section, is not authentication. The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
+
+And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE" — it means "only clients with a trusted cert can connect, and then AE Title ACLs decide what they can do." If the ACL is `ANY-SCP`, congratulations — you've got a cryptographically authenticated wildcard.
 
 ### 4. AE Title Brute Force
 
@@ -102,3 +150,5 @@ This is where my Scapy DICOM contrib module comes in — once Nmap tells you you
 ## Why This Matters
 
 Most hospital network assessments treat DICOM as a black box on port 104. The tooling to look inside that box already ships with Nmap — most people just don't know it's there. Vendor fingerprinting closes the loop: you go from "something speaks DICOM" to "this specific library version is parsing my PDUs," which is the difference between a finding and an actionable finding.
+
+And there's a lot more room here. Almost all of this — port discovery, auth probing, vendor fingerprinting — has a direct DICOMweb analog against WADO/QIDO/STOW endpoints, and as far as I can tell nobody has written the NSE scripts for it yet. Plenty of future work.

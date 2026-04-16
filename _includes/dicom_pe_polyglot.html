@@ -1,0 +1,70 @@
+<div style="font-family: monospace; width: 650px; margin: 20px auto;">
+
+    <div style="font-size: 0.85em; color: #666; text-align: center; margin-bottom: 8px; font-style: italic;">
+        Same file layout as above &mdash; now with a weaponized preamble and a payload-carrying private tag.
+    </div>
+
+    <div style="border: 3px solid #333; border-radius: 8px; overflow: hidden; text-align: center; background-color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+
+        <div style="background-color: #333; color: #FFF; padding: 12px; font-size: 1.2em; text-transform: uppercase; letter-spacing: 1px;">
+            <strong>DICOM / PE Polyglot (CVE-2019-11687)</strong>
+        </div>
+
+        <div style="background-color: #D55E00; padding: 15px; border-bottom: 2px solid #333; text-align: left;">
+            <div style="color: #FFF; text-align: center; margin-bottom: 12px;">
+                <strong style="font-size: 1.1em;">Preamble (128 Bytes) &mdash; Weaponized</strong>
+            </div>
+
+            <div style="background-color: #CC79A7; color: #FFF; padding: 10px; margin: 5px auto 8px auto; width: 85%; border: 3px solid #CC0000; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+                <strong>DOS MZ Header (64 Bytes) &mdash; Offset 0x00</strong><br>
+                <div style="background-color: rgba(255,255,255,0.2); padding: 6px; margin-top: 6px; border-radius: 2px; font-size: 0.85em;">
+                    "MZ" magic (0x4D 0x5A) at offset 0.<br>
+                    e_lfanew field points forward to the PE header.
+                </div>
+            </div>
+
+            <div style="background-color: rgba(255,255,255,0.3); border: 1px solid rgba(0,0,0,0.2); border-radius: 6px; padding: 8px; margin: 0 auto; width: 85%;">
+                <strong style="color: #FFF;">DOS Stub (64 Bytes) &mdash; Offset 0x40</strong><br>
+                <em style="font-size: 0.8em; color: #FFF;">Legacy "This program cannot be run in DOS mode" padding &mdash; fills the 128-byte budget.</em>
+            </div>
+        </div>
+
+        <div style="background-color: #56B4E9; color: #000; padding: 15px; border-bottom: 2px solid #333;">
+            <strong style="font-size: 1.1em;">DICM Magic &mdash; Offset 0x80</strong>
+            <div style="background-color: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.2); border-radius: 6px; padding: 8px; margin: 8px auto 0 auto; width: 85%; text-align: left;">
+                <em style="font-size: 0.85em; color: #222;">File validates as conforming DICOM. Image stays viewable.</em>
+            </div>
+        </div>
+
+        <div style="background-color: #E5E5E5; color: #000; padding: 12px; border-bottom: 2px solid #333;">
+            <strong>File Meta Information &mdash; Offset 0x84+</strong>
+        </div>
+
+        <div style="background-color: #009E73; padding: 15px; text-align: left;">
+
+            <div style="color: #FFF; text-align: center; margin-bottom: 15px;">
+                <strong style="font-size: 1.2em;">Dataset</strong>
+            </div>
+
+            <div style="background-color: #F0E442; color: #000; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 4px solid #D55E00; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+                <strong style="font-size: 1.1em;">Private Tag (0009,0000) &mdash; PE Payload</strong><br>
+                <div style="background-color: rgba(0,0,0,0.05); padding: 6px; margin-top: 6px; border-radius: 2px; font-size: 0.9em;">
+                    VR = OB. Full PE executable stored as value.<br>
+                    <em>The DOS header's e_lfanew field points here.</em>
+                </div>
+            </div>
+
+            <div style="background-color: #E5E5E5; color: #000; padding: 10px; border: 1px solid #333; border-radius: 4px;">
+                <strong>Pixel Data (7FE0,0010)</strong> &mdash; valid medical image, renders normally.
+            </div>
+
+        </div>
+    </div>
+
+    <div style="margin-top: 12px; padding: 12px 15px; border: 2px dashed #666; border-radius: 6px; background-color: #FAFAFA; font-size: 0.9em;">
+        <strong style="color: #333;">Two interpretations, one file:</strong><br>
+        <span style="color: #0066AA;"><strong>DICOM viewer:</strong></span> preamble (ignored) &rarr; DICM &rarr; TLV stream &rarr; image displayed.<br>
+        <span style="color: #CC0000;"><strong>Windows loader:</strong></span> MZ &rarr; e_lfanew &rarr; PE header in private tag &rarr; executes.
+    </div>
+
+</div>

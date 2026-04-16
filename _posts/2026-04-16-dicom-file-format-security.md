@@ -16,6 +16,8 @@ The original intent was dual-format compatibility. You could stick a TIFF header
 
 After the preamble and prefix, the rest of the file is a flat stream of Tag-Length-Value (TLV) data elements. Same data model as the A-ASSOCIATE PDU from the 101, just serialized to disk instead of sent over TCP. Patient name, study date, modality type, pixel data. It's all TLV, all the way down. And none of it has integrity protection unless you explicitly opt into security profiles that the overwhelming majority of implementations don't support.
 
+{% include dicom_part10_file.html %}
+
 The spec itself now acknowledges this is a problem. A note in the current PS3.10 states that the file format "has a potential security vulnerability when the 128-byte File Preamble contains malicious executable content." CISA issued [ICS-ALERT-19-162-01](https://www.cisa.gov/uscert/ics/alerts/ICS-ALERT-19-162-01) over it. More on that in a moment.
 
 ## What the Spec Actually Offers for File Security
@@ -48,6 +50,8 @@ Open a random `.dcm` in [Innolitics' DICOM browser](https://dicom.innolitics.com
 
 Remember those 128 undefined bytes? In 2019, security researcher Markel Picado Ortiz (d00rt) at Cylera Labs demonstrated that you can put a valid PE (Windows executable) header in the preamble. The DOS header and stub fit in 128 bytes. The stub points to a PE payload stored further in the file inside a DICOM data element. The result is a single file that is simultaneously a valid `.dcm` and a valid `.exe`. Open it in a DICOM viewer: you see a medical image. Run it from `cmd.exe` and it executes as a Windows binary. The image stays clinically valid and viewable. This was assigned [CVE-2019-11687](https://www.cvedetails.com/cve/CVE-2019-11687/) (CVSS 7.8).
 
+{% include dicom_pe_polyglot.html %}
+
 In April 2025, Praetorian extended this to Linux with ELFDICOM, demonstrating ELF-based polyglots and even a bash shebang variant that fits a shell payload in the preamble to download and execute a remote script. They also explored storing payloads beyond the 128-byte preamble constraint by placing executable data in DICOM data elements, effectively using the TLV structure itself as a payload container.
 
 Researchers have demonstrated embedding full C2 implant binaries (Cobalt Strike beacons, Havoc payloads, arbitrary shellcode) into DICOM images while keeping the image intact and viewable. The clinical data is preserved. A radiologist reads the image and sees a normal scan. The malware is right there next to the patient's PHI.
@@ -61,6 +65,8 @@ Researchers have demonstrated that embedded payloads can evade static analysis i
 ### Beyond the Preamble
 
 The preamble gets the headlines, but it's not the only hiding spot. The DICOM file format has several large, loosely validated binary containers that make excellent payload storage:
+
+{% include dicom_data_element.html %}
 
 **Pixel Data `(7FE0,0010)`:** Encapsulated pixel data uses OB (Other Byte) value representation, which can hold arbitrary binary content in individual frames. Most viewers render the pixel data for display but don't validate the byte content of individual encapsulated frames. You can embed arbitrary data in frames that the viewer skips.
 

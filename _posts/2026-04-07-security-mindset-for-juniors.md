@@ -46,7 +46,7 @@ A medical device doesn't exist in isolation. It lives in an ecosystem: clinical 
 
 ## How to Work with People
 
-**Be humble in your quest.** No one is the smartest. There are NO dumb questions here. But we must find, understand, and verify the true answer based on empirical evidence. To make good judgments, it often takes fully understanding a technical concept to its core.
+**Be humble in your quest.** No one is the smartest. There are NO dumb questions here. But we must find, understand, and verify the true answer based on empirical evidence. To make good judgments, it often takes fully understanding a technical concept to its core. And sometimes that means saying, *"no, I still don't understand -- can you explain again, or a different way?"* That takes gumption. Nodding along is easy; admitting the gap is how you actually close it.
 
 You WILL fail if you practice the divergent mindset. That's the whole point. How will you deal with many failures? Being humble about failing is a quick path to success. The question isn't whether you'll be wrong, it's whether you'll learn from it or hide from it.
 

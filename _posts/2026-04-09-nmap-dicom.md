@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "DICOM Security 101: Nmap and the Basics"
+title: "DICOM Security 101: Understanding Network Protocol Security with Nmap"
 ---
 
 Most people don't know that Nmap, the port scanning tool everyone and their grandma has used, actually supports DICOM. And not in some half-baked way — there are real NSE scripts doing real protocol-level work. As someone who works on medical devices, I felt the need to break down a few DICOM security concepts so you can better understand how to use the supported tooling.

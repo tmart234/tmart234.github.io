@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "DICOM Security 102: Diving into Files"
+last_modified_at: 2026-04-16
 ---
 
 The [101]({% post_url 2026-04-09-nmap-dicom %}) covered what happens on the wire: A-ASSOCIATE handshakes, AE Title "authentication," vendor fingerprinting. This one covers what's inside the files. DICOM's Part 10 file format was designed for interoperability and absolutely nothing else. No integrity by default. No authentication. No validation. That makes it a file format worth understanding if you're testing or defending imaging systems.
@@ -21,9 +22,9 @@ The spec itself now acknowledges this is a problem. A note in the current PS3.10
 
 [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines real security mechanisms for DICOM files. They exist. They're well-specified. Here's what's on the shelf:
 
-**CMS Encapsulation (Media Security Profiles, Annex D):** The spec defines how to wrap a DICOM file in a Cryptographic Message Syntax envelope for confidentiality and integrity on removable media. AES encryption, the whole package. In the wild, .dcm files get dumped to USB sticks and network shares unencrypted.
+**CMS Encapsulation (Media Security Profiles, Annex D):** The spec defines how to wrap a DICOM file in a Cryptographic Message Syntax envelope for confidentiality and integrity on removable media. AES encryption, the whole package. At the attribute level it's the `Encrypted Attributes Sequence (0400,0500)`. If that tag isn't present in a `.dcm`, there's no application-layer encryption on it. In the wild, files get dumped to USB sticks and network shares unencrypted.
 
-**Digital Signatures (Annex C):** You can sign individual DICOM attributes or the full dataset using X.509 certificates and RSA. The spec defines four signature profiles: Creator RSA, Authorization RSA, Base RSA, and Structured Report RSA. The granularity is actually the problem. You choose which tags to sign, which means unsigned tags can be tampered with without breaking the signature. And the real blocker isn't the crypto: it's key distribution. Running a PKI across a hospital imaging network with devices from a dozen vendors, some of them running embedded OSes from 2012, is a genuine operational challenge.
+**Digital Signatures (Annex C):** You can sign individual DICOM attributes or the full dataset using X.509 certificates and RSA. The spec defines four signature profiles: Creator RSA, Authorization RSA, Base RSA, and Structured Report RSA. Signatures land in the file as a `Digital Signatures Sequence (FFFA,FFFA)` containing the certificate, the signature bytes, and a timestamp. A conforming viewer is required to preserve those elements. It's not required to verify them. The granularity is the other problem: you choose which tags to sign, which means unsigned tags can be tampered with without breaking the signature. And the real blocker isn't the crypto: it's key distribution. Running a PKI across a hospital imaging network with devices from a dozen vendors, some of them running embedded OSes from 2012, is a genuine operational challenge.
 
 **De-identification Profiles (Annex E):** PHI stripping for research use. Not encryption, not integrity, just attribute-level removal or replacement of identifying information. It falls apart on "burned-in" pixel data, where patient names are baked directly into ultrasound or fluoroscopy images as rendered text. The spec acknowledges this limitation and defines a "Clean Pixel Data Option," but implementing it requires image-level analysis that most de-identification tools skip.
 
@@ -31,11 +32,21 @@ Here's the thing: an [AJR article on DICOM security](https://www.ajronline.org/d
 
 The spec did the work. The install base overwhelmingly hasn't deployed it. Partly because PKI in a hospital imaging network is genuinely hard. Partly because nobody's been forced to.
 
+## Two Tags Worth Grepping For
+
+Beyond the profiles, the spec defines two attributes in the [SOP Common Module](https://dicom.innolitics.com/ciods) that do useful security work on their own — and that almost nothing checks.
+
+**SOP Instance Status `(0100,0410)`** carries a two-letter code: `NS` (Not Specified), `OR` (Original, not yet authorized), `AO` (Authorized Original, approved for diagnostic use), or `AC` (Authorized Copy). It's the spec's answer to "has this been signed off for clinical use." PACS accept and display all four states interchangeably. The flag exists. Nothing enforces it.
+
+**Original Attributes Sequence `(0400,0561)`** is DICOM's audit trail. When an attribute gets modified — patient name corrected, study UID coerced during import — the prior value is supposed to land here with a modification timestamp, the modifying system, and a reason code (`COERCE` or `CORRECT`). If you pull a file from your PACS and this sequence is empty, you have no record of what the file looked like before it hit your network.
+
+Open a random `.dcm` in [Innolitics' DICOM browser](https://dicom.innolitics.com/ciods) and look. The absence of these tags is the finding.
+
 ## DICOM Files as Malware Containers
 
 ### The Preamble Polyglot
 
-Remember those 128 undefined bytes? In 2019, security researcher Markel Picado Ortiz (d00rt) at Cylera Labs demonstrated that you can put a valid PE (Windows executable) header in the preamble. The DOS header and stub fit in 128 bytes. The stub points to a PE payload stored further in the file inside a DICOM data element. The result is a single file that is simultaneously a valid `.dcm` and a valid `.exe`. Open it in a DICOM viewer — you see a medical image. Run it from `cmd.exe` and it executes as a Windows binary. The image stays clinically valid and viewable. This was assigned [CVE-2019-11687](https://www.cvedetails.com/cve/CVE-2019-11687/) (CVSS 7.8).
+Remember those 128 undefined bytes? In 2019, security researcher Markel Picado Ortiz (d00rt) at Cylera Labs demonstrated that you can put a valid PE (Windows executable) header in the preamble. The DOS header and stub fit in 128 bytes. The stub points to a PE payload stored further in the file inside a DICOM data element. The result is a single file that is simultaneously a valid `.dcm` and a valid `.exe`. Open it in a DICOM viewer: you see a medical image. Run it from `cmd.exe` and it executes as a Windows binary. The image stays clinically valid and viewable. This was assigned [CVE-2019-11687](https://www.cvedetails.com/cve/CVE-2019-11687/) (CVSS 7.8).
 
 In April 2025, Praetorian extended this to Linux with ELFDICOM, demonstrating ELF-based polyglots and even a bash shebang variant that fits a shell payload in the preamble to download and execute a remote script. They also explored storing payloads beyond the 128-byte preamble constraint by placing executable data in DICOM data elements, effectively using the TLV structure itself as a payload container.
 
@@ -93,4 +104,4 @@ Network segmentation is table stakes, but it doesn't help once a payload is insi
 
 ## The File Format Is the Vulnerability
 
-The DICOM Part 10 file format is a 30-year-old container designed to hold medical images. It turns out it holds malware just as well. The spec has the tools to address this — CMS encapsulation, digital signatures, TLS transport, preamble validation guidance. The industry hasn't deployed them, partly because PKI in a hospital imaging network is genuinely hard, and partly because nobody's been forced to.
+The DICOM Part 10 file format is a 30-year-old container designed to hold medical images. It turns out it holds malware just as well. The spec has the tools to address this: CMS encapsulation, digital signatures, TLS transport, preamble validation guidance. The industry hasn't deployed them, partly because PKI in a hospital imaging network is genuinely hard, and partly because nobody's been forced to.

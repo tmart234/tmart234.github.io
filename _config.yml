@@ -3,7 +3,7 @@ markdown:         kramdown
 highlighter:      rouge
 
 permalink: /:title/
-paginate: 5
+paginate: 8
 future: true
 
 # Setup

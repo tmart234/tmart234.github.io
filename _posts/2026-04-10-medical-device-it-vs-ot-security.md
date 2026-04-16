@@ -11,6 +11,10 @@ Medical device product security doesn't fit cleanly into a strict IT or OT secur
 
 IT security is confidentiality-first, data-centric, patch-friendly, and built around short hardware lifecycles. OT security flips the priorities: safety and availability come first, processes are sacred, change is dangerous, and assets live for decades.
 
+## Software-Centric vs Systems-Centric
+
+IT security is software-centric — the unit of analysis is code, dependencies, CVEs, and configs. OT security is systems-centric — the unit of analysis is the asset, which means firmware + hardware + sensors + actuators + RF + physical process + the humans in the loop. Med devices demand the systems-centric lens: analog sensor spoofing, RF jamming of telemetry, physical tamper of a pump mechanism, and clinician workflow assumptions are all in scope, and an SBOM plus a CVE feed won't catch any of them. Hot take: a software-centric program can ship a "secure" device that's trivially exploitable at the hardware, RF, or workflow layer.
+
 ## Why Med Devices Lean OT
 
 Safety is the prime directive. Patient harm is physical, not just a data breach — the same mental model as process safety in industrial environments. Availability and integrity trump confidentiality.
@@ -45,6 +49,6 @@ Med devices still carry significant IT DNA. Networking is pure IT — TCP/IP, TL
 
 ## Why This Matters
 
-If you assume IT, you'll over-index on confidentiality and patching cadence and under-index on availability, safety impact, and change control. If you assume industrial OT, you'll reach for Purdue Models and ICS frameworks that won't map to your product architecture.
+If you assume IT, you'll over-index on confidentiality and patching cadence and under-index on availability, safety impact, and change control. A software-centric lens also scopes security too narrowly — it misses the hardware, firmware, RF, and workflow attack surface that defines real device risk. If you assume industrial OT, you'll reach for Purdue Models and ICS frameworks that won't map to your product architecture.
 
 Medical device security is its own discipline — OT-flavored, IT-networked, safety-regulated. The right mental model: OT priorities with IT infrastructure and a unique regulatory wrapper (FDA + TIR57 + IEC 62443 applied at the product level) around everything.

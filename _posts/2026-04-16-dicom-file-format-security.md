@@ -32,7 +32,7 @@ Here's the thing: an [AJR article on DICOM security](https://www.ajronline.org/d
 
 The spec did the work. The install base overwhelmingly hasn't deployed it. Partly because PKI in a hospital imaging network is genuinely hard. Partly because nobody's been forced to.
 
-## Two Tags Worth Grepping For
+## Two Other Security Related Tags
 
 Beyond the profiles, the spec defines two attributes in the [SOP Common Module](https://dicom.innolitics.com/ciods) that do useful security work on their own — and that almost nothing checks.
 

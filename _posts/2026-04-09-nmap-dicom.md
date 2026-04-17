@@ -83,7 +83,7 @@ Now let me be very clear about what AE Titles actually are. They're identifiers.
 
 That said, there are some edge cases. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines the User Identity Negotiation sub-item itself, and [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines the security profiles that put these mechanisms to use. Together they cover:
 
-- **TLS-based Secure Transport Connection Profiles** (PS3.15) — certificate-based mutual authentication at the transport layer. Its own beast; see the next section.
+- **TLS-based Secure Transport Connection Profiles** (PS3.15) — certificate-based mutual authentication at the transport layer.
 - **User Identity Negotiation** (PS3.7, via the A-ASSOCIATE User Identity sub-item, referenced by PS3.15 profiles like the Basic User Identity Association Profile and Kerberos Identity Negotiation Association Profile) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
 
 So theoretically, even with an accepted AE Title, the server *might* also require User Identity credentials — but this is checked during the same A-ASSOCIATE handshake, not after it. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. Because the rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if User Identity is in play.

@@ -3,7 +3,7 @@ layout: post
 title: "DICOM Security 101: Understanding Network Protocol Security with Nmap"
 ---
 
-Most people don't know that Nmap, the port scanning tool everyone and their grandma has used, actually supports DICOM. And not in some half-baked way — there are real NSE scripts doing real protocol-level work. As someone who works on medical devices, I felt the need to break down a few DICOM security concepts so you can better understand how to use the supported tooling.
+Most people don't know that Nmap — the port scanning tool everyone and their grandma has used — actually supports DICOM. And not in some half-baked way: there are real NSE scripts doing real protocol-level work. So Nmap is the way in for this post, but it's really about DICOM on the wire — enough protocol fluency to understand what those scripts are actually doing, where the "authentication" story falls apart, and where the interesting attack surface lives. As someone who works on medical devices, I wanted a 101 that didn't stop at "port 104 is open."
 
 ## The Protocol at a Glance
 
@@ -34,12 +34,14 @@ From a security standpoint this is a big deal, and it's the part most "DICOM sec
 
 DIMSE is the verb layer that rides on top of an accepted association. The ones you need to know:
 
-- `C-ECHO` — protocol ping. Are you alive and do you speak DICOM.
-- `C-STORE` — write a DICOM object to the peer. This is the "upload arbitrary DICOM to the PACS" surface. Everything about file-format fuzzing aims here.
-- `C-FIND` — query metadata. Patient lists, studies, series, Modality Worklist entries.
-- `C-MOVE` — tell the peer to send data to a third AE over a new association. Classic SSRF-adjacent — *you* pick the destination.
-- `C-GET` — pull data back on the existing association. Less common in the wild, mostly because `C-MOVE` exists.
-- Plus the **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) used by Modality Performed Procedure Step, Storage Commitment, Print, and other workflow/event-reporting SOP Classes.
+| Service | Why a pentester cares |
+| --- | --- |
+| `C-ECHO` | Protocol ping. Confirms the peer actually speaks DICOM past the handshake — the check Nmap's `dicom-ping` skips. |
+| `C-STORE` | Upload arbitrary DICOM objects to the peer. The "write to the PACS" surface and the entry point for file-format fuzzing. |
+| `C-FIND` | Query metadata — patient lists, studies, series, Modality Worklist. PHI exposure and authorization-scoping check. |
+| `C-MOVE` | Peer opens a new association to a destination *you* name. SSRF-adjacent pivot primitive. |
+| `C-GET` | Pull data back on the existing association. Rare in the wild, but worth trying when `C-MOVE` is blocked. |
+| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | MPPS, Storage Commitment, Print, and other workflow/event-reporting SOP Classes. Usually an afterthought in ACLs — which is where the misconfig lives. |
 
 The mental model that makes the rest of the post click: **presentation contexts gate *what you can ask*, DIMSE services are *what you ask for*, and AE Titles gate *whether you're allowed to ask at all*.** Those are three different checks and real deployments get the layering wrong constantly.
 
@@ -145,7 +147,15 @@ From a pentester's point of view, `0x55` is probably the most important. Impleme
 
 The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure — including an optional User Identity sub-item (Type `0x58`) that supports username/passcode, Kerberos, SAML, and JWT. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials — so "associated" doesn't always mean "full access."
 
-This is where my Scapy DICOM contrib module comes in — once Nmap tells you you're talking to DCMTK 3.6.9, you can use Scapy to send a C-FIND and see if the AE Title you negotiated actually has query access, or craft a malformed PDU to test the parser. I'll cover that workflow in a future post.
+This is where my [Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) comes in — once Nmap tells you you're talking to DCMTK 3.6.9, you can use Scapy to send a C-FIND and see if the AE Title you negotiated actually has query access, or craft a malformed PDU to test the parser. I'll cover that workflow in a future post.
+
+As a taste, here's what it looks like to craft an A-ASSOCIATE-RQ that carries a username and passcode via the User Identity sub-item from PS3.7 §D.3.3.7 — the same field path Nmap doesn't touch:
+
+```python
+DICOM()/A_ASSOCIATE_RQ(calling_ae_title="PENTEST", called_ae_title="ANY-SCP",
+    variable_items=[DICOMUserIdentity(user_identity_type=2,
+        primary_field=b"admin", secondary_field=b"password")])
+```
 
 ## Why This Matters
 

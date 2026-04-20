@@ -32,7 +32,7 @@ From a security standpoint this is a big deal, and it's the part most "DICOM sec
 
 ### DIMSE Services
 
-DIMSE is the verb layer that rides on top of an accepted association. The ones you need to know:
+DIMSE is the verb layer that rides on top of an accepted association. It splits into two families: **C-services** (composite) are the data-plane ops — reading, writing, and moving clinical objects, which is where the big blast radius lives and where you should spend most of your time. **N-services** (normalized) are workflow and event-reporting verbs — smaller byte footprint, but they manipulate workflow state (procedure-performed flags, storage-commitment confirmations, print jobs) that ACLs often forget to cover. The ones you need to know:
 
 | Service | Why a pentester cares |
 | --- | --- |

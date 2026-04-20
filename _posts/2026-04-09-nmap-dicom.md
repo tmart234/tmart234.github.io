@@ -1,13 +1,13 @@
 ---
 layout: post
-title: "DICOM Security 101: Understanding Network Protocol Security with Nmap"
+title: "DICOM Security 101: Network Security with Nmap"
 ---
 
-Most people don't know that Nmap — the port scanning tool everyone and their grandma has used — actually supports DICOM. And not in some half-baked way: there are real NSE scripts doing real protocol-level work. So Nmap is the way in for this post, but it's really about DICOM on the wire — enough protocol fluency to understand what those scripts are actually doing, where the "authentication" story falls apart, and where the interesting attack surface lives. As someone who works on medical devices, I wanted a 101 that didn't stop at "port 104 is open."
+Most people don't know that Nmap — the port scanning tool everyone and their grandma has used — supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post attempts to: give you some basic protocol fluency, review existing Nmap DICOM support, review my Nmap DICOM PR on Fingerprinting DICOM systems, touch briefly on my Scapy DICOM PR, and overall network attack surface analysis.
 
-## The Protocol at a Glance
+## Flavors of DICOM
 
-Before the Nmap tour, a minimum viable mental model. If you already live in this protocol you can skip ahead, but a lot of what follows only makes sense once you know what's being negotiated on the wire.
+Before the Nmap tour, let's talk about different flavors of networked DICOM.
 
 ### Ports
 
@@ -17,33 +17,28 @@ Before the Nmap tour, a minimum viable mental model. If you already live in this
 | DICOM over TLS | 2762 |
 | DICOMweb | 80, 443 |
 
-DICOMweb is the HTTP/REST sibling — WADO-RS, QIDO-RS, STOW-RS over plain HTTP(S). It's mostly out of scope for this post, but it's a rich target and there's real room for future NSE scripts pointed at it. Keeping this simple on purpose.
+DICOMweb is out of scope for this article but there is a ton of room for improvement here as far as tooling support.
 
 ### Presentation Contexts: SOP Classes and Transfer Syntaxes
 
-A-ASSOCIATE isn't just "here's my AE Title (AET), here are my credentials, let me in." It's a negotiation. The client proposes a list of **Presentation Contexts**, each one a pair of:
+A-ASSOCIATE isn't just "here's my AE Title (AET), here are my credentials, let me in" — it's a negotiation. The client proposes a list of **Presentation Contexts**, each pairing an **Abstract Syntax** (a SOP Class UID — *what* you want to do: Verification, Storage, Query/Retrieve, Modality Worklist) with one or more **Transfer Syntaxes** (*how* the bytes are encoded: Implicit VR Little Endian, Explicit VR Little Endian, the JPEG family, RLE). The server accepts or rejects each pair and returns a Presentation Context ID; the accepted IDs gate every DIMSE op that follows. Propose Storage and get it accepted, you can C-STORE. Don't propose it, or get it rejected, and you can't.
 
-- an **Abstract Syntax** — a SOP Class UID identifying *what* you want to do: Verification (C-ECHO), Storage, Query/Retrieve, Modality Worklist, and so on.
-- one or more **Transfer Syntaxes** — *how* the bytes are encoded on the wire: Implicit VR Little Endian, Explicit VR Little Endian, the JPEG family, RLE, and friends.
-
-The server accepts or rejects each one and hands back a Presentation Context ID. Those IDs are the gate — they decide which DIMSE operations the client can even ask for during the rest of the session. Propose Storage, get Storage accepted, now you can C-STORE. Don't propose it, or get it rejected, and you can't.
-
-From a security standpoint this is a big deal, and it's the part most "DICOM security" posts skip. Transfer syntax negotiation in particular is a documented fuzzing surface: downgrade to Implicit VR to strip type information, force uncompressed to dodge codec code paths, or pick a rarely-exercised JPEG variant to steer the peer onto the dusty, under-tested decoder. The negotiation itself is an attack primitive.
+That negotiation is itself an attack primitive. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder.
 
 ### DIMSE Services
 
-DIMSE is the verb layer that rides on top of an accepted association. It splits into two families: **C-services** (composite) are the data-plane ops — reading, writing, and moving clinical objects, which is where the big blast radius lives and where you should spend most of your time. **N-services** (normalized) are workflow and event-reporting verbs — smaller byte footprint, but they manipulate workflow state (procedure-performed flags, storage-commitment confirmations, print jobs) that ACLs often forget to cover. The ones you need to know:
+DIMSE is a layer that rides on top of an accepted association. It splits into two families: **C-services** (composite) are the data-plane ops — reading, writing, and moving clinical objects, which is where the big blast radius lives and where you should spend most of your time. **N-services** (normalized) are workflow and event-reporting verbs — manipulate workflow state (procedure-performed flags, storage-commitment confirmations, print jobs) that ACLs often forget to cover. The ones you need to know:
 
 | Service | Why a pentester cares |
 | --- | --- |
-| `C-ECHO` | Protocol ping. Confirms the peer actually speaks DICOM past the handshake — the check Nmap's `dicom-ping` skips. |
-| `C-STORE` | Upload arbitrary DICOM objects to the peer. The "write to the PACS" surface and the entry point for file-format fuzzing. |
-| `C-FIND` | Query metadata — patient lists, studies, series, Modality Worklist. PHI exposure and authorization-scoping check. |
+| `C-ECHO` | Protocol ping. Sent over an established A-ASSOCIATE — the step Nmap's `dicom-ping` skips. |
+| `C-STORE` | Upload DICOM objects to the peer. Entry point for file-format fuzzing. |
+| `C-FIND` | Query: patient lists, studies, series, Modality Worklist. PHI exposure or authorization-scoping check. |
 | `C-MOVE` | Peer opens a new association to a destination *you* name. SSRF-adjacent pivot primitive. |
-| `C-GET` | Pull data back on the existing association. Rare in the wild, but worth trying when `C-MOVE` is blocked. |
-| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | MPPS, Storage Commitment, Print, and other workflow/event-reporting SOP Classes. Usually an afterthought in ACLs — which is where the misconfig lives. |
+| `C-GET` | Same idea on the existing connection. Rare in the wild — try when `C-MOVE` is blocked. |
+| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow and event verbs — MPPS, Storage Commitment, Print. ACLs routinely forget them, which is where the misconfig lives. |
 
-The mental model that makes the rest of the post click: **presentation contexts gate *what you can ask*, DIMSE services are *what you ask for*, and AE Titles gate *whether you're allowed to ask at all*.** Those are three different checks and real deployments get the layering wrong constantly.
+Three checks, three layers: AE Titles gate *whether you can ask*, presentation contexts gate *what you can ask*, DIMSE services are *what you ask for*. Real deployments get the layering wrong constantly.
 
 ## What Nmap Already Does for DICOM
 

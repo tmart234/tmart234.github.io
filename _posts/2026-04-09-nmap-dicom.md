@@ -19,12 +19,6 @@ Before the Nmap tour, let's talk about different flavors of networked DICOM.
 
 DICOMweb is out of scope for this article but there is a ton of room for improvement here as far as tooling support.
 
-### Presentation Contexts: SOP Classes and Transfer Syntaxes
-
-A-ASSOCIATE isn't just "here's my AE Title (AET), here are my credentials, let me in" — it's a negotiation. The client proposes a list of **Presentation Contexts**, each pairing an **Abstract Syntax** (a SOP Class UID — *what* you want to do: Verification, Storage, Query/Retrieve, Modality Worklist) with one or more **Transfer Syntaxes** (*how* the bytes are encoded: Implicit VR Little Endian, Explicit VR Little Endian, the JPEG family, RLE). The server accepts or rejects each pair and returns a Presentation Context ID; the accepted IDs gate every DIMSE op that follows. Propose Storage and get it accepted, you can C-STORE. Don't propose it, or get it rejected, and you can't.
-
-That negotiation is itself an attack primitive. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder.
-
 ### DIMSE Services
 
 After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves — store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state — MPPS updates, storage-commitment results, print jobs. They get far less scrutiny, and once a peer is associated there's no per-verb auth, so an `N-SET` that flips an MPPS to COMPLETED or a forged storage-commitment `N-EVENT-REPORT` lands with the same trust as a `C-STORE`. No pixels touched, no hash mismatch, just corrupted workflow. The ones you need to know:
@@ -70,22 +64,29 @@ Since everything Nmap does for DICOM — discovery, "insecure AE Title" detectio
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response — no extra packets, no extra noise on the network. Keep this mental model.
 
-### 3. AE Title "Authentication" (It's Not)
+### 3. Authorization in DICOM: Three Gates
 
-(Still the same `dicom-ping` script — this is just a different finding it can surface.) If Nmap's `dicom-ping` gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: `Any AET is accepted (Insecure)`.
+A-ASSOCIATE layers three authorization controls — none of them prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings.
 
-Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM system manufacturers repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL — a lightweight authorization control, not a cryptographic one. Any accepted means the door is wide open.
+| Control | What it authorizes | Where it lives in A-ASSOCIATE | Granularity | Typical failure mode |
+| --- | --- | --- | --- | --- |
+| Called AE Title | Whether the association is accepted at all | Fixed header | Per-peer / per-role | `ANY-SCP` wildcard — accepts any caller |
+| Abstract Syntax (SOP Class UID) | Which *operation classes* the association may perform (Storage, Q/R, MWL, MPPS, Print) | Presentation Context item 0x20 (proposed) / 0x21 (accepted) | Per-operation-class | Over-scoped — Storage accepted when the role only needs Query |
+| Transfer Syntax | Which *byte encodings* the accepted operations may use | Sub-item 0x40 inside the 0x21 | Per-encoding, per-context | Accepts obsolete or rare syntaxes — Implicit VR downgrade strips type info, rare JPEG variants steer the peer onto its dustiest decoder |
+| DIMSE-level checks (optional, vendor-specific) | Whether a specific op on a specific object is permitted within the accepted scope | Post-association, per-message | Per-op + per-object | Usually absent — "associated = fully authorized within context" |
+
+(Still the same `dicom-ping` script — this is just a different finding it can surface.) If Nmap's `dicom-ping` gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: `Any AET is accepted (Insecure)`. That's the first row failing open: an identifier repurposed as a weak ACL, with the identifier itself unauthenticated. "Any AE Title accepted" is a wildcard (`*`) in your ACL. The other rows fail the same way — over-scoped abstract syntaxes, obsolete transfer syntaxes accepted, and DIMSE-level checks usually absent entirely.
 
 #### What DICOM Actually Offers for Authentication
 
-That said, there are some edge cases. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines the User Identity Negotiation sub-item itself, and [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines the security profiles that put these mechanisms to use. Together they cover:
+Authentication is a separate conversation — TLS authenticates the transport peer, User Identity Negotiation authenticates the user. Neither replaces the authorization gates above; they run alongside them. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines the User Identity Negotiation sub-item itself, and [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines the security profiles that put these mechanisms to use. Together they cover:
 
 - **TLS-based Secure Transport Connection Profiles** (PS3.15) — certificate-based mutual authentication at the transport layer.
 - **User Identity Negotiation** (PS3.7, via the A-ASSOCIATE User Identity sub-item, referenced by PS3.15 profiles like the Basic User Identity Association Profile and Kerberos Identity Negotiation Association Profile) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
 
 So theoretically, even with an accepted AE Title, the server *might* also require User Identity credentials — but this is checked during the same A-ASSOCIATE handshake, not after it. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. Because the rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if User Identity is in play.
 
-### TLS: Specified, Rarely Deployed, Often Broken
+### TLS: Specified, Inconsistently Deployed
 
 PS3.15 defines TLS profiles — including BCP 195-aligned ones — with mutual authentication. The spec is fine. The *deployments* are not.
 
@@ -93,7 +94,7 @@ There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a pe
 
 Mutual TLS is rare in the field. When it exists, it's frequently server-auth only with the AE Title standing in as the "client identity" — which, per the previous section, is not authentication. The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
 
-And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE" — it means "only clients with a trusted cert can connect, and then AE Title ACLs decide what they can do." If the ACL is `ANY-SCP`, congratulations — you've got a cryptographically authenticated wildcard.
+And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE" — it means "only clients with a trusted cert can connect, and then AE Title ACLs decide what they can do."
 
 ### 4. AE Title Brute Force
 
@@ -107,6 +108,20 @@ nmap --script dicom-brute --script-args passdb=aets.txt <target>
 
 If the generic AE Title got rejected in step 2, this is your next move. Feed it a list of common AE Titles and see what sticks.
 
+#### What the Reject Tells You
+
+When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dicom.nema.org/medical/dicom/current/output/html/part08.html) defines the `(Result, Source, Reason)` triple in the reject PDU. Decode it:
+
+| Result / Source / Reason | What likely happened | Pentester move |
+| --- | --- | --- |
+| 1 / 1 / 1 (rejected permanent, ACSE, no reason given) | Server being cagey — often AE Title miss | Rotate wordlist |
+| 1 / 1 / 2 (protocol version not supported) | Wrong DICOM version | Irrelevant, move on |
+| 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
+| 1 / 2 / 1 (no reason given, presentation) | Context rejected, association still up | Re-propose narrower contexts |
+| 2 / 1 / 1 (rejected transient) | Load/state issue | Retry later |
+
+Symmetric with the A-ASSOCIATE-AC fingerprinting below: the AC tells you who built the stack, the RJ tells you which gate you tripped on.
+
 ## Adding Vendor & Version Fingerprinting
 
 I submitted a PR to Nmap to add basic DICOM vendor and version detection. Seems boring on the surface, but it's core to what Nmap does — fingerprinting. And I felt strongly that default tooling should have default support for identifying what DICOM implementation you're talking to.
@@ -119,7 +134,9 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 
 {% include associate_ac_pdu.html %}
 
-The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
+Each Item Type `0x21` is the server's commitment to one **Presentation Context** from the RQ's proposals — a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That negotiation is itself an attack primitive — downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder.
+
+The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
 
 **Implementation Class UID (Type 0x52):** A DICOM UID — dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. The tension is real; owning it is the insight. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK. On paper this is the "who built this" device field — as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM thing.
 

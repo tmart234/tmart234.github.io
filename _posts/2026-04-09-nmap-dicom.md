@@ -27,7 +27,7 @@ That negotiation is itself an attack primitive. Downgrade to Implicit VR to stri
 
 ### DIMSE Services
 
-DIMSE is a layer that rides on top of an accepted association. It splits into two families: **C-services** (composite) are the data-plane ops — reading, writing, and moving clinical objects, which is where the big blast radius lives and where you should spend most of your time. **N-services** (normalized) are workflow and event-reporting verbs — manipulate workflow state (procedure-performed flags, storage-commitment confirmations, print jobs) that ACLs often forget to cover. The ones you need to know:
+After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves — store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state — MPPS updates, storage-commitment results, print jobs. They get far less scrutiny, and once a peer is associated there's no per-verb auth, so an `N-SET` that flips an MPPS to COMPLETED or a forged storage-commitment `N-EVENT-REPORT` lands with the same trust as a `C-STORE`. No pixels touched, no hash mismatch, just corrupted workflow. The ones you need to know:
 
 | Service | Why a pentester cares |
 | --- | --- |
@@ -58,9 +58,9 @@ Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 
 nmap -sC -p 104 <target>
 ```
 
-Now we're getting somewhere. With Nmap's default scripts enabled (`-sC`), the `dicom-ping` script runs automatically. `-A` will also pull it in, but `-A` is `-sC` plus OS detection, version detection, and traceroute — more than you probably want to throw at a hospital network. For DICOM recon specifically, the targeted `-sC -p 104` form is the right invocation. Either way, here's the thing most people don't realize: this "ping" is not a real DICOM ping. It never sends a C-ECHO. It only does the first half — the A-ASSOCIATE request/response handshake.
+With Nmap's default scripts enabled (`-sC`), the `dicom-ping` script runs automatically. `-A` will also pull it in, but `-A` is `-sC` plus OS detection, version detection, and traceroute — could be more than you want to throw at a hospital network. For DICOM recon specifically, starting at the targeted `-sC -p 104` is best. Either way, here's the thing: this "ping" is not a real DICOM ping because it never sends a C-ECHO. It only does the first half — the A-ASSOCIATE request/response handshake. That's it.
 
-A successful association or even an AE-reject response is enough for Nmap to report: **"DICOM Service Provider discovered!"** That's it. The script sees the server speak DICOM and calls it a day. No C-ECHO, no verification of actual DICOM service capability. Just the handshake.
+A successful association (AE accepted) or even an unsuccessful (AE-reject response) is enough for Nmap to report: `DICOM Service Provider discovered!` So the script sees the server speak DICOM and calls it a day. No full C-ECHO, no verification of actual DICOM service capability. Just the associate handshake.
 
 #### How This Works
 
@@ -68,13 +68,13 @@ Since everything Nmap does for DICOM — discovery, "insecure AE Title" detectio
 
 ![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
 
-Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. The C-ECHO phase that would make this a "real" DICOM ping is skipped entirely. Every Nmap DICOM feature is built on parsing whatever comes back in that single response — no extra packets, no extra noise on the network. Keep this mental model in mind for the rest of the article.
+Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response — no extra packets, no extra noise on the network. Keep this mental model.
 
 ### 3. AE Title "Authentication" (It's Not)
 
-(Still the same `dicom-ping` script — this is just a different finding it can surface, not a separate capability.) If Nmap's `dicom-ping` gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: **"Any AET is accepted (Insecure)"**.
+(Still the same `dicom-ping` script — this is just a different finding it can surface.) If Nmap's `dicom-ping` gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: `Any AET is accepted (Insecure)`.
 
-Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM systems repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL — a lightweight authorization control, not a cryptographic one. The door is wide open.
+Now let me be very clear about what AE Titles actually are. They're identifiers. That's it. Somewhere along the way, many DICOM system manufacturers repurposed them as a weak access-control mechanism. At best, they're ACL-ish. They are absolutely **NOT** real cryptographic authentication. Having "Any AE Title accepted" is basically a wildcard (`*`) in your ACL — a lightweight authorization control, not a cryptographic one. Any accepted means the door is wide open.
 
 #### What DICOM Actually Offers for Authentication
 

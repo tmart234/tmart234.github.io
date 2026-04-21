@@ -68,12 +68,12 @@ Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept
 
 A-ASSOCIATE layers three authorization controls — none of them prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings.
 
-| Control | What it authorizes | Where it lives in A-ASSOCIATE | Granularity | Typical failure mode |
-| --- | --- | --- | --- | --- |
-| Called AE Title | Whether the association is accepted at all | Fixed header | Per-peer / per-role | `ANY-SCP` wildcard — accepts any caller |
-| Abstract Syntax (SOP Class UID) | Which *operation classes* the association may perform (Storage, Q/R, MWL, MPPS, Print) | Presentation Context item 0x20 (proposed) / 0x21 (accepted) | Per-operation-class | Over-scoped — Storage accepted when the role only needs Query |
-| Transfer Syntax | Which *byte encodings* the accepted operations may use | Sub-item 0x40 inside the 0x21 | Per-encoding, per-context | Accepts obsolete or rare syntaxes — Implicit VR downgrade strips type info, rare JPEG variants steer the peer onto its dustiest decoder |
-| DIMSE-level checks (optional, vendor-specific) | Whether a specific op on a specific object is permitted within the accepted scope | Post-association, per-message | Per-op + per-object | Usually absent — "associated = fully authorized within context" |
+| Control | What it authorizes | Granularity | Typical failure |
+| --- | --- | --- | --- |
+| Called AE Title (fixed header) | Whether the association is accepted at all | Per-peer | `ANY-SCP` wildcard — accepts any caller |
+| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | Which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
+| Transfer Syntax (sub-item 0x40 inside 0x21) | Which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted — Implicit VR downgrade, rare JPEG variants |
+| DIMSE-level checks (post-association, per-message) | A specific op on a specific object within accepted scope | Per-op + per-object | Usually absent — "associated = fully authorized" |
 
 (Still the same `dicom-ping` script — this is just a different finding it can surface.) If Nmap's `dicom-ping` gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: `Any AET is accepted (Insecure)`. That's the first row failing open: an identifier repurposed as a weak ACL, with the identifier itself unauthenticated. "Any AE Title accepted" is a wildcard (`*`) in your ACL. The other rows fail the same way — over-scoped abstract syntaxes, obsolete transfer syntaxes accepted, and DIMSE-level checks usually absent entirely.
 
@@ -117,6 +117,7 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 | 1 / 1 / 1 (rejected permanent, ACSE, no reason given) | Server being cagey — often AE Title miss | Rotate wordlist |
 | 1 / 1 / 2 (protocol version not supported) | Wrong DICOM version | Irrelevant, move on |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
+| 1 / 1 / 1 *after* sending a User Identity sub-item (0x58) | Credential miss — PS3.7 auth rejected (no dedicated code exists) | Pivot to credential wordlist |
 | 1 / 2 / 1 (no reason given, presentation) | Context rejected, association still up | Re-propose narrower contexts |
 | 2 / 1 / 1 (rejected transient) | Load/state issue | Retry later |
 

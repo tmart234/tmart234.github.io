@@ -115,7 +115,7 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 | Result / Source / Reason | What likely happened | Pentester move |
 | --- | --- | --- |
 | 1 / 1 / 1 (rejected permanent, ACSE, no reason given) | Server being cagey — often AE Title miss | Rotate wordlist |
-| 1 / 1 / 2 (protocol version not supported) | Wrong DICOM version | Irrelevant, move on |
+| 1 / 1 / 2 (protocol version not supported) | Protocol-Version bits in RQ didn't match | Flip Protocol-Version field and re-propose |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
 | 1 / 1 / 1 *after* sending a User Identity sub-item (0x58) | Credential miss — PS3.7 auth rejected (no dedicated code exists) | Pivot to credential wordlist |
 | 1 / 2 / 1 (no reason given, presentation) | Context rejected, association still up | Re-propose narrower contexts |

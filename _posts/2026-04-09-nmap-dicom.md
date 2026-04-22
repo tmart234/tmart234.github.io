@@ -17,7 +17,7 @@ Before the Nmap tour, let's talk about different flavors of networked DICOM.
 | DICOM over TLS | 2762 |
 | DICOMweb | 80, 443 |
 
-DICOMweb is out of scope for this article but there is a ton of room for improvement here as far as tooling support.
+DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place — bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." No Nmap NSE scripts exist for DICOMweb yet; it's out of scope for this post, but flagged as open tooling work.
 
 ### DIMSE Services
 
@@ -32,11 +32,34 @@ After association, DIMSE splits into two families. **C-services** (Composite) ac
 | `C-GET` | Same idea on the existing connection. Rare in the wild — try when `C-MOVE` is blocked. |
 | **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow and event verbs — MPPS, Storage Commitment, Print. ACLs routinely forget them, which is where the misconfig lives. |
 
-Three checks, three layers: AE Titles gate *whether you can ask*, presentation contexts gate *what you can ask*, DIMSE services are *what you ask for*. Real deployments get the layering wrong constantly.
+Those three layers — AE Titles gate *whether you can ask*, presentation contexts gate *what you can ask*, DIMSE services are *what you ask for* — are what the next section frames as gates. Real deployments get the layering wrong constantly.
+
+## Auth in DICOM
+
+A-ASSOCIATE layers three authorization controls — none of them prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings.
+
+| Control | What it authorizes | Granularity | Typical failure |
+| --- | --- | --- | --- |
+| Called AE Title (fixed header) | Whether the association is accepted at all | Per-peer | `ANY-SCP` wildcard — accepts any caller |
+| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | Which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
+| Transfer Syntax (sub-item 0x40 inside 0x21) | Which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted — Implicit VR downgrade, rare JPEG variants |
+| DIMSE-level checks (post-association, per-message) | A specific op on a specific object within accepted scope | Per-op + per-object | Usually absent — "associated = fully authorized" |
+
+Authentication is a separate conversation from the gates above — TLS authenticates the transport peer, User Identity Negotiation authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and carries username-only, username + passcode, Kerberos ticket, SAML, or JWT. The catch: **there is no dedicated reject code for a credential miss** — servers reuse `1/1/1` ("no reason given"), the same code they return for an AE Title miss. The only thing disambiguating the two is whether you sent a `0x58` sub-item in your RQ. That distinction is what the brute-force reject table below hinges on.
+
+### TLS: Specified, Inconsistently Deployed
+
+PS3.15 defines TLS profiles — including BCP 195-aligned ones — with mutual authentication. The spec is fine. The *deployments* are not.
+
+There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of real deployments just run TLS on 104 or 11112 because the vendor's config has exactly one "DICOM port" field and a "use TLS" checkbox. The port tells you very little on its own.
+
+Mutual TLS is rare in the field. When it exists, it's frequently server-auth only with the AE Title standing in as the "client identity" — which, per the previous section, is not authentication. The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
+
+And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE" — it means "only clients with a trusted cert can connect, and then AE Title ACLs decide what they can do."
 
 ## What Nmap Already Does for DICOM
 
-Nmap ships two DICOM-aware NSE scripts — `dicom-ping` and `dicom-brute` — plus the generic TCP port scanning you'd get on any service. I'll walk through them in order of increasing usefulness, then get to the vendor/version fingerprinting my unmerged PR adds.
+With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts — `dicom-ping` and `dicom-brute` — plus the generic TCP port scanning you'd get on any service. I'll walk through them in order of increasing usefulness, then get to the vendor/version fingerprinting my unmerged PR adds.
 
 ### 1. Port Scanning
 
@@ -64,39 +87,9 @@ Since everything Nmap does for DICOM — discovery, "insecure AE Title" detectio
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response — no extra packets, no extra noise on the network. Keep this mental model.
 
-### 3. Authorization in DICOM: Three Gates
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it reports `Any AET is accepted (Insecure)`. That's the signal that the first row of the Three Gates from `## Auth in DICOM` above is failing open — an identifier being repurposed as a weak ACL, wildcard-style.
 
-A-ASSOCIATE layers three authorization controls — none of them prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings.
-
-| Control | What it authorizes | Granularity | Typical failure |
-| --- | --- | --- | --- |
-| Called AE Title (fixed header) | Whether the association is accepted at all | Per-peer | `ANY-SCP` wildcard — accepts any caller |
-| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | Which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
-| Transfer Syntax (sub-item 0x40 inside 0x21) | Which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted — Implicit VR downgrade, rare JPEG variants |
-| DIMSE-level checks (post-association, per-message) | A specific op on a specific object within accepted scope | Per-op + per-object | Usually absent — "associated = fully authorized" |
-
-(Still the same `dicom-ping` script — this is just a different finding it can surface.) If Nmap's `dicom-ping` gets an association accepted with the generic "ANY-SCP" AE Title, you'll see: `Any AET is accepted (Insecure)`. That's the first row failing open: an identifier repurposed as a weak ACL, with the identifier itself unauthenticated. "Any AE Title accepted" is a wildcard (`*`) in your ACL. The other rows fail the same way — over-scoped abstract syntaxes, obsolete transfer syntaxes accepted, and DIMSE-level checks usually absent entirely.
-
-#### What DICOM Actually Offers for Authentication
-
-Authentication is a separate conversation — TLS authenticates the transport peer, User Identity Negotiation authenticates the user. Neither replaces the authorization gates above; they run alongside them. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines the User Identity Negotiation sub-item itself, and [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines the security profiles that put these mechanisms to use. Together they cover:
-
-- **TLS-based Secure Transport Connection Profiles** (PS3.15) — certificate-based mutual authentication at the transport layer.
-- **User Identity Negotiation** (PS3.7, via the A-ASSOCIATE User Identity sub-item, referenced by PS3.15 profiles like the Basic User Identity Association Profile and Kerberos Identity Negotiation Association Profile) — username only, username + passcode, Kerberos service ticket, SAML assertion, and JWT.
-
-So theoretically, even with an accepted AE Title, the server *might* also require User Identity credentials — but this is checked during the same A-ASSOCIATE handshake, not after it. In practice? Don't count on it — and even when you do, the username/passcode path is a fat target. Because the rejection reason codes differ between an AE Title miss and a credential miss, you can usually brute force them individually — nail the AE Title first, then pivot to credentials if User Identity is in play.
-
-### TLS: Specified, Inconsistently Deployed
-
-PS3.15 defines TLS profiles — including BCP 195-aligned ones — with mutual authentication. The spec is fine. The *deployments* are not.
-
-There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of real deployments just run TLS on 104 or 11112 because the vendor's config has exactly one "DICOM port" field and a "use TLS" checkbox. The port tells you very little on its own.
-
-Mutual TLS is rare in the field. When it exists, it's frequently server-auth only with the AE Title standing in as the "client identity" — which, per the previous section, is not authentication. The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
-
-And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE" — it means "only clients with a trusted cert can connect, and then AE Title ACLs decide what they can do."
-
-### 4. AE Title Brute Force
+### 3. AE Title Brute Force
 
 ```
 nmap --script dicom-brute <target>
@@ -106,7 +99,7 @@ nmap --script dicom-brute --script-args passdb=aets.txt <target>
 
 `dicom-brute` is categorized under `auth` and `brute` — not `default` — so `-sC` won't pull it in. You have to call it explicitly. The most important script argument here is `passdb`, which lets you specify a wordlist for guessing the called AE Title.
 
-If the generic AE Title got rejected in step 2, this is your next move. Feed it a list of common AE Titles and see what sticks.
+If `dicom-ping` came back rejected — or came back accepted under `ANY-SCP` and you want to enumerate real AETs — this is your next move. Feed it a list of common AE Titles and see what sticks.
 
 #### What the Reject Tells You
 
@@ -114,12 +107,11 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 
 | Result / Source / Reason | What likely happened | Pentester move |
 | --- | --- | --- |
-| 1 / 1 / 1 (rejected permanent, ACSE, no reason given) | Server being cagey — often AE Title miss | Rotate wordlist |
-| 1 / 1 / 2 (protocol version not supported) | Protocol-Version bits in RQ didn't match | Flip Protocol-Version field and re-propose |
+| 1 / 1 / 1 (rejected permanent, ACSE, no reason given) | **Without** a User Identity sub-item (`0x58`) in your RQ: likely AE Title miss. **With** a `0x58` in your RQ: likely credential miss — PS3.7 auth rejected, no dedicated reject code exists, so it reuses this one. | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
-| 1 / 1 / 1 *after* sending a User Identity sub-item (0x58) | Credential miss — PS3.7 auth rejected (no dedicated code exists) | Pivot to credential wordlist |
 | 1 / 2 / 1 (no reason given, presentation) | Context rejected, association still up | Re-propose narrower contexts |
-| 2 / 1 / 1 (rejected transient) | Load/state issue | Retry later |
+
+Order of operations matters: the same `1/1/1` code means different things depending on whether your RQ carried a `0x58` sub-item, so brute the AE Title gate *first* (no `0x58`), then — only once you know the AET is good — add `0x58` and brute credentials. (`1/1/2 protocol version not supported` also exists — rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 
 Symmetric with the A-ASSOCIATE-AC fingerprinting below: the AC tells you who built the stack, the RJ tells you which gate you tripped on.
 
@@ -169,9 +161,3 @@ DICOM()/A_ASSOCIATE_RQ(calling_ae_title="PENTEST", called_ae_title="ANY-SCP",
     variable_items=[DICOMUserIdentity(user_identity_type=2,
         primary_field=b"admin", secondary_field=b"password")])
 ```
-
-## Why This Matters
-
-Most hospital network assessments treat DICOM as a black box on port 104. The tooling to look inside that box already ships with Nmap — most people just don't know it's there. Vendor fingerprinting closes the loop: you go from "something speaks DICOM" to "this specific library version is parsing my PDUs," which is the difference between a finding and an actionable finding.
-
-And there's a lot more room here. Almost all of this — port discovery, auth probing, vendor fingerprinting — has a direct DICOMweb analog against WADO/QIDO/STOW endpoints, and as far as I can tell nobody has written the NSE scripts for it yet. Plenty of future work.

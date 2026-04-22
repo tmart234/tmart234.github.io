@@ -1,13 +1,14 @@
 ---
 layout: post
 title: "DICOM Security 101: Network Security with Nmap"
+mermaid: true
 ---
 
 Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post attempts to give you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover my Nmap DICOM PR on fingerprinting DICOM systems, and touch briefly on my Scapy DICOM PR.
 
 ## Prior Work
 
-The baseline DICOM tooling in Nmap is Paulino Calderon's work [[1]](#references): he wrote the `dicom` NSE (Nmap Scripting engine) library, the `dicom-ping` discovery script, and the `dicom-brute` AE Title brute-forcer script in 2019. For the broader medical-imaging threat model, Eichelberg, Kleber, and Kämmerer published the standard survey in 2020 [[2]](#references); if you only read one paper, that's the one. The DICOM fingerprinting, discussed later, is about tying up lose ends from the original ping script. 
+The baseline DICOM tooling in Nmap is Paulino Calderon's work [[1]](#references): he wrote the `dicom` NSE (Nmap Scripting engine) library, the `dicom-ping` discovery script, and the `dicom-brute` AE Title brute-forcer script in 2019. The DICOM fingerprinting, discussed later, is about tying up lose ends from the original ping script. 
 
 ## Flavors of DICOM
 
@@ -95,7 +96,33 @@ A successful association (AE accepted) or even an unsuccessful (AE-reject respon
 
 Since everything Nmap does for DICOM (discovery, "insecure AE Title" detection, brute force, and the vendor/version fingerprinting I'll get to below) rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
 
-![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
+{% raw %}
+<div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant C as Client (Nmap)
+    participant S as Server (PACS)
+
+    rect rgba(180, 180, 100, 0.25)
+    Note over C,S: Ping Phase 1: Association
+    C->>S: A-ASSOCIATE-RQ (0x01)<br/>Calling AE: "NMAP_DICOM_PING"
+    alt Server accepts
+        S-->>C: A-ASSOCIATE-AC (0x02)<br/>e.g. "Implementation: DCMTK 3.6.9"
+    else Server rejects
+        S-->>C: A-ASSOCIATE-RJ (0x03)<br/>Result / Source / Reason in header
+    end
+    Note over C: Parse Vendor/Version<br/>Check AE Title<br/>Drop Connection
+    C-xS: [Connection Terminated]
+    end
+
+    rect rgba(200, 80, 80, 0.25)
+    Note over C,S: SKIPPED: Ping Phase 2 (C-ECHO)
+    C--xS: C-ECHO-RQ (Data 0x04)
+    S--xC: C-ECHO-RSP (Data 0x04)
+    C--xS: A-RELEASE-RQ (0x05)
+    end
+</div>
+{% endraw %}
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
@@ -129,7 +156,7 @@ Symmetric with the A-ASSOCIATE-AC fingerprinting below: the AC tells you who bui
 
 ## Adding Vendor & Version Fingerprinting
 
-I submitted a PR to Nmap to add basic DICOM vendor and version detection [[3]](#references). Seems boring on the surface, but it's core to what Nmap does: fingerprinting. And I felt strongly that default tooling should have default support for identifying what DICOM implementation you're talking to.
+I submitted a PR to Nmap to add basic DICOM vendor and version detection [[2]](#references). Seems boring on the surface, but it's core to what Nmap does: fingerprinting. And I felt strongly that default tooling should have default support for identifying what DICOM implementation you're talking to.
 
 Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fancy diagrams — and by "fancy" I mean one JPEG and some ASCII art.
 
@@ -145,7 +172,7 @@ The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`)
 
 **Implementation Class UID (Type 0x52):** A DICOM UID in dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. The tension is real; owning it is the insight. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK (a software library), while [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) maps to GE Medical Systems (a device manufacturer) — exactly the sw-lib-vs-OEM distinction the next section turns into a fingerprinting primitive. On paper this is the "who built this" device field: as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM thing.
 
-**Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9 [[4]](#references). Worth noting: per the spec, 0x52 is mandatory in the A-ASSOCIATE-AC but 0x55 is *optional*, so a conforming implementation can omit it entirely. Most real-world implementations do send it, and the PR falls back gracefully when they don't.
+**Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9 [[3]](#references). Worth noting: per the spec, 0x52 is mandatory in the A-ASSOCIATE-AC but 0x55 is *optional*, so a conforming implementation can omit it entirely. Most real-world implementations do send it, and the PR falls back gracefully when they don't.
 
 #### Why You Need to Look Up Both
 
@@ -177,6 +204,5 @@ DICOM()/A_ASSOCIATE_RQ(calling_ae_title="PENTEST", called_ae_title="ANY-SCP",
 ## References
 
 1. Calderon, P. (2019). *New NSE library for DICOM and scripts `dicom-ping` and `dicom-brute`.* nmap-dev mailing list announcement: [seclists.org/nmap-dev/2019/q3/6](https://seclists.org/nmap-dev/2019/q3/6). Script docs: [`dicom-ping`](https://nmap.org/nsedoc/scripts/dicom-ping.html), [`dicom-brute`](https://nmap.org/nsedoc/scripts/dicom-brute.html).
-2. Eichelberg, M., Kleber, K., & Kämmerer, M. (2020). *Cybersecurity in PACS and Medical Imaging: an Overview.* Journal of Digital Imaging 33(6), 1527–1542. [doi:10.1007/s10278-020-00393-3](https://doi.org/10.1007/s10278-020-00393-3). Open access via [PMC7728878](https://pmc.ncbi.nlm.nih.gov/articles/PMC7728878/).
-3. Nmap PR adding DICOM vendor/version fingerprinting off the A-ASSOCIATE-AC (link TBD pending merge or reviewable state).
-4. OFFIS DCMTK 3.6.9 release announcement (Dec 10, 2024): [forum.dcmtk.org/viewtopic.php?t=5429](https://forum.dcmtk.org/viewtopic.php?t=5429).
+2. Nmap PR adding DICOM vendor/version fingerprinting off the A-ASSOCIATE-AC (link TBD pending merge or reviewable state).
+3. OFFIS DCMTK 3.6.9 release announcement (Dec 10, 2024): [forum.dcmtk.org/viewtopic.php?t=5429](https://forum.dcmtk.org/viewtopic.php?t=5429).

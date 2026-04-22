@@ -177,6 +177,6 @@ DICOM()/A_ASSOCIATE_RQ(calling_ae_title="PENTEST", called_ae_title="ANY-SCP",
 ## References
 
 1. Calderon, P. (2019). *New NSE library for DICOM and scripts `dicom-ping` and `dicom-brute`.* nmap-dev mailing list announcement: [seclists.org/nmap-dev/2019/q3/6](https://seclists.org/nmap-dev/2019/q3/6). Script docs: [`dicom-ping`](https://nmap.org/nsedoc/scripts/dicom-ping.html), [`dicom-brute`](https://nmap.org/nsedoc/scripts/dicom-brute.html).
-2. Eichelberg, M., Kleber, K., & Kämmerer, M. (2020). *Cybersecurity in PACS and Medical Imaging: an Overview.* Journal of Digital Imaging 33(6), 1527–1542. [doi:10.1007/s10278-020-00393-3](https://doi.org/10.1007/s10278-020-00393-3). Open access via [PMC7728878](https://pmc.ncbi.nlm.nih.gov/articles/PMC7728878/).
+2. Eichelberg, M., Kleber, K., & Kämmerer, M. (2020). *Cybersecurity in PACS and Medical Imaging: an Overview.* Journal of Digital Imaging 33(6), 1527–1542. Open access via [PMC7728878](https://pmc.ncbi.nlm.nih.gov/articles/PMC7728878/).
 3. Nmap PR adding DICOM vendor/version fingerprinting off the A-ASSOCIATE-AC (link TBD pending merge or reviewable state).
 4. OFFIS DCMTK 3.6.9 release announcement (Dec 10, 2024): [forum.dcmtk.org/viewtopic.php?t=5429](https://forum.dcmtk.org/viewtopic.php?t=5429).

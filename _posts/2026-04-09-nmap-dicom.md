@@ -1,6 +1,7 @@
 ---
 layout: post
 title: "DICOM Security 101: Network Security with Nmap"
+mermaid: true
 ---
 
 Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post attempts to give you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover my Nmap DICOM PR on fingerprinting DICOM systems, and touch briefly on my Scapy DICOM PR.
@@ -95,7 +96,33 @@ A successful association (AE accepted) or even an unsuccessful (AE-reject respon
 
 Since everything Nmap does for DICOM (discovery, "insecure AE Title" detection, brute force, and the vendor/version fingerprinting I'll get to below) rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
 
-![Nmap DICOM ping sequence]({{ site.baseurl }}/public/associate.jpg)
+{% raw %}
+<div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant C as Client (Nmap)
+    participant S as Server (PACS)
+
+    rect rgba(180, 180, 100, 0.25)
+    Note over C,S: Ping Phase 1: Association
+    C->>S: A-ASSOCIATE-RQ (0x01)<br/>Calling AE: "NMAP_DICOM_PING"
+    alt Server accepts
+        S-->>C: A-ASSOCIATE-AC (0x02)<br/>e.g. "Implementation: DCMTK 3.6.9"
+    else Server rejects
+        S-->>C: A-ASSOCIATE-RJ (0x03)<br/>Result / Source / Reason in header
+    end
+    Note over C: Parse Vendor/Version<br/>Check AE Title<br/>Drop Connection
+    C-xS: [Connection Terminated]
+    end
+
+    rect rgba(200, 80, 80, 0.25)
+    Note over C,S: SKIPPED: Ping Phase 2 (C-ECHO)
+    C--xS: C-ECHO-RQ (Data 0x04)
+    S--xC: C-ECHO-RSP (Data 0x04)
+    C--xS: A-RELEASE-RQ (0x05)
+    end
+</div>
+{% endraw %}
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 

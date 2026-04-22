@@ -62,7 +62,7 @@ Authentication is a separate conversation from the gates above. For network auth
     - SAML assertion
     - JSON Web Token (JWT)
 
-The catch: **there is no dedicated reject code for a credential miss**. Servers reuse `1/1/1` ("no reason given"), the same code they return for an AE Title miss. The only thing disambiguating the two is whether you sent a `0x58` sub-item in your RQ. That distinction is what the brute-force reject table below hinges on.
+The catch: **there is no dedicated reject *reason* code for a credential miss**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity as rejected-permanent with Source = `2` (service-provider, ACSE) and Reason = `1` (no-reason-given) — i.e. `1/2/1` — which *is* distinguishable from an AE Title miss at `1/1/7` or `1/1/1` (Source = `1`, service-user). Some implementations flatten both to `1/1/1` anyway, and in that flattened case the only remaining tell is whether you sent a `0x58` sub-item in your RQ. Check the Source byte first; fall back to the `0x58`-presence heuristic when it's useless.
 
 ### TLS: Specified, Inconsistently Deployed
 
@@ -154,11 +154,11 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 
 | Result / Source / Reason | What likely happened | Pentester move |
 | --- | --- | --- |
-| 1 / 1 / 1 (rejected permanent, ACSE, no reason given) | **Without** a User Identity sub-item (`0x58`) in your RQ: likely AE Title miss. **With** a `0x58` in your RQ: likely credential miss (PS3.7 auth rejected, no dedicated reject code exists, so it reuses this one). | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
+| 1 / 1 / 1 (rejected permanent, service-user, no reason given) | AE Title miss. On stacks that flatten credential rejections into this code (rather than the spec-compliant `1/2/1`), it can also mean a credential miss — **without** a `0x58` sub-item in your RQ, assume AE Title; **with** a `0x58`, could be either. | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
-| 1 / 2 / 1 (no reason given, presentation) | Context rejected, association still up | Re-propose narrower contexts |
+| 1 / 2 / 1 (rejected permanent, service-provider/ACSE, no reason given) | Spec-compliant credential miss per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html). AE Title was accepted, user identity was not. | Keep the AET, brute `0x58` credential forms. |
 
-Order of operations matters: the same `1/1/1` code means different things depending on whether your RQ carried a `0x58` sub-item, so brute the AE Title gate *first* (no `0x58`), then, only once you know the AET is good, add `0x58` and brute credentials. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
+Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`, so brute the AE Title gate *first* (no `0x58`), then, once the AET is good, add `0x58` and brute credentials. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 
 Symmetric with the A-ASSOCIATE-AC fingerprinting below: the AC tells you who built the stack, the RJ tells you which gate you tripped on.
 

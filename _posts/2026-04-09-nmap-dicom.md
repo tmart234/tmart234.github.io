@@ -52,7 +52,15 @@ A-ASSOCIATE layers three authorization controls, none of which prove identity (t
 | Transfer Syntax (sub-item 0x40 inside 0x21) | Which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted (Implicit VR downgrade, rare JPEG variants) |
 | DIMSE-level checks (post-association, per-message) | A specific op on a specific object within accepted scope | Per-op + per-object | Usually absent: "associated = fully authorized" |
 
-Authentication is a separate conversation from the gates above. TLS authenticates the transport peer; User Identity Negotiation authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and carries username-only, username + passcode, Kerberos ticket, SAML, or JWT.
+Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
+
+- **DICOM TLS** — authenticates the transport peer. Mutual-auth capable.
+- **User Identity Negotiation** — authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and supports one of:
+    - username only
+    - username + passcode
+    - Kerberos service ticket
+    - SAML assertion
+    - JSON Web Token (JWT)
 
 The catch: **there is no dedicated reject code for a credential miss**. Servers reuse `1/1/1` ("no reason given"), the same code they return for an AE Title miss. The only thing disambiguating the two is whether you sent a `0x58` sub-item in your RQ. That distinction is what the brute-force reject table below hinges on.
 

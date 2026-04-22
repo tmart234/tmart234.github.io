@@ -20,6 +20,8 @@ author:
 
 plugins:
   - jekyll-paginate
+  - jekyll-seo-tag
+  - jekyll-sitemap
 
 # Giscus comments (https://giscus.app)
 # To get your category_id: visit https://giscus.app, enter your repo, select "General", and copy the data-category-id value

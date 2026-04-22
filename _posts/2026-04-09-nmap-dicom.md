@@ -3,11 +3,11 @@ layout: post
 title: "DICOM Security 101: Network Security with Nmap"
 ---
 
-Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post attempts to give you some basic protocol fluency, review existing Nmap DICOM support, cover my Nmap DICOM PR on fingerprinting DICOM systems, touch briefly on my Scapy DICOM PR, and finish with overall network attack surface analysis.
+Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post attempts to give you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover my Nmap DICOM PR on fingerprinting DICOM systems, and touch briefly on my Scapy DICOM PR.
 
 ## Prior Work
 
-The baseline DICOM tooling in Nmap is Paulino Calderon's work [[1]](#references): he wrote the `dicom` NSE library, the `dicom-ping` discovery script, and the `dicom-brute` AE Title brute-forcer, all landed in 2019. For the broader medical-imaging threat model, Eichelberg, Kleber, and Kämmerer published the standard survey in 2020 [[2]](#references); if you only read one paper on PACS and DICOM cybersecurity, that's the one. What's missing from the default Nmap distribution is vendor/version fingerprinting off the A-ASSOCIATE-AC, and anything at all for DICOMweb. This post is about the first gap; DICOMweb scripting stays open tooling work.
+The baseline DICOM tooling in Nmap is Paulino Calderon's work [[1]](#references): he wrote the `dicom` NSE (Nmap Scripting engine) library, the `dicom-ping` discovery script, and the `dicom-brute` AE Title brute-forcer script in 2019. For the broader medical-imaging threat model, Eichelberg, Kleber, and Kämmerer published the standard survey in 2020 [[2]](#references); if you only read one paper, that's the one. The DICOM fingerprinting, discussed later, is about tying up lose ends from the original ping script. 
 
 ## Flavors of DICOM
 

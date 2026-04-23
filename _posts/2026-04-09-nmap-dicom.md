@@ -45,7 +45,7 @@ Those three layers — AE Titles gate *whether you can ask*, presentation contex
 
 ## Auth in DICOM
 
-A-ASSOCIATE layers three authorization controls, none of which prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings.
+A-ASSOCIATE layers three authorization controls, none of which prove identity. The server decides: can this peer connect, what operations is the association allowed to perform, and in what encodings.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |

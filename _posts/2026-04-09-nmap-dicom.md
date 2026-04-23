@@ -76,7 +76,7 @@ Mutual TLS is rare in the field. When it exists, it's frequently server-auth onl
 
 The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
 
-And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE"; it means "only clients with a trusted cert can connect, and then the SCP's AE Title gate still decides what they can do."
+And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE."
 
 ## What Nmap Already Does for DICOM
 

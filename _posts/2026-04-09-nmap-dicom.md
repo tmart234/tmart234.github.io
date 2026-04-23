@@ -134,7 +134,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it reports `Any AET is accepted (Insecure)`. That's the signal that the first row of the Three Gates from `## Auth in DICOM` above is failing open: an identifier being repurposed as a weak ACL, wildcard-style.
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it reports `Any AET is accepted (Insecure)`. That's the signal that the first row of the Three Gates from `## Auth in DICOM` above is failing open: an identifier being repurposed as the gate itself, wildcard-style.
 
 ### 3. AE Title Brute Force
 

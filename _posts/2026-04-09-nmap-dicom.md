@@ -41,17 +41,15 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 | `C-GET` | Server returns objects over the current association — no second outbound connection, so not a pivot. Rare because it needs reverse-role negotiation for Storage SOP classes; try when `C-MOVE` is blocked. |
 | **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow/event verbs: MPPS state, Storage Commitment receipts, Print. No pixel data, so audit rules and threat models routinely skip them. |
 
-Those three layers — AE Titles gate *whether you can ask*, presentation contexts gate *what you can ask*, DIMSE services are *what you ask for* — are what the next section frames as gates. Real deployments get the layering wrong constantly.
-
 ## Auth in DICOM
 
 A-ASSOCIATE layers three authorization controls, none of which prove identity. The server decides: can this peer connect, what operations is the association allowed to perform, and in what encodings.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
-| Called AE Title (fixed header) | Whether the association is accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
-| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | Which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
-| Transfer Syntax (sub-item 0x40 inside 0x21) | Which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted (Implicit VR downgrade, rare JPEG variants) |
+| Called AE Title (fixed header) | *Whether you can ask* — is the association accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
+| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask* — which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
+| Transfer Syntax (sub-item 0x40 inside 0x21) | *How you can ask* — which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted (Implicit VR downgrade, rare JPEG variants) |
 
 Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
 

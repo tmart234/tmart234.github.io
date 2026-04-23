@@ -43,7 +43,7 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 
 ## Auth in DICOM
 
-A-ASSOCIATE layers three authorization controls, none of which prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings. Real deployments get the layering wrong constantly.
+A-ASSOCIATE layers three authorization controls, none of which prove identity (that's authentication, below). The server is deciding: can this peer connect, what operations is the association allowed to perform, and in what encodings.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |

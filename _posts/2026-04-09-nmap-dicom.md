@@ -37,7 +37,7 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 | `C-FIND` | Query: patient lists, studies, series, Modality Worklist. PHI exposure or authorization-scoping check. |
 | `C-MOVE` | Client names a destination AE Title; server opens a new A-ASSOCIATE there and C-STOREs the objects to it. SSRF-adjacent pivot primitive. |
 | `C-GET` | Server returns objects over the current association — no second outbound connection, so not a pivot. Rare because it needs reverse-role negotiation for Storage SOP classes; try when `C-MOVE` is blocked. |
-| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow/event verbs: MPPS state, Storage Commitment receipts, Print. No pixel data, so audit rules and threat models routinely skip them (see paragraph above). |
+| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow/event verbs: MPPS state, Storage Commitment receipts, Print. No pixel data, so audit rules and threat models routinely skip them. |
 
 Those three layers — AE Titles gate *whether you can ask*, presentation contexts gate *what you can ask*, DIMSE services are *what you ask for* — are what the next section frames as gates. Real deployments get the layering wrong constantly.
 

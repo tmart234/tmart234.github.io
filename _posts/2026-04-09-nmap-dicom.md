@@ -178,36 +178,37 @@ Each Item Type `0x21` is the server's commitment to one **Presentation Context**
 
 The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
 
-**Implementation Class UID (Type 0x52):** A DICOM UID in dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. The tension is real; owning it is the insight. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK (a software library), while [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) maps to GE Medical Systems (a device manufacturer) — exactly the sw-lib-vs-OEM distinction the next section turns into a fingerprinting primitive. On paper this is the "who built this" device field: as the name *Implementation* implies, it's supposed to identify the vendor implementing the DICOM thing.
+**Implementation Class UID (Type 0x52):** A DICOM UID in dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK (a software library), while [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) maps to GE Medical Systems (a device manufacturer) — exactly the sw-lib-vs-OEM distinction the next section turns into a fingerprinting primitive.
 
 **Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9 [[3]](#references). Worth noting: per the spec, 0x52 is mandatory in the A-ASSOCIATE-AC but 0x55 is *optional*, so a conforming implementation can omit it entirely. Most real-world implementations do send it, and the PR falls back gracefully when they don't.
 
 #### Why You Need to Look Up Both
 
-I spent time investigating which of these actually matters, and the answer is: both, for different reasons.
+I spent time here investigating which of these actually matters, and the answer is: both, but for different reasons.
 
-In theory `0x52` is the authoritative vendor identifier for who manufactured the device. In practice, lazy vendors ship devices with a third-party stack (DCMTK, dcm4che, pynetdicom) and never override the Implementation Class UID or Version Name. So `0x52` happily reports "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
+In theory `0x52`, the Implementation Class UID, is the authoritative vendor identifier for who (MDM) manufactured the device. As the name *Implementation* implies... it identifies the vendor implementing the DICOM thing. But in practice, a lot of lazy MDMs ship devices with a third-party software stack's UID (DCMTK, dcm4che, pynetdicom) and don't override it. So `0x52` would happily report "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
 
-The PR handles this by doing table lookups on **both** fields independently and surfacing what each one says:
+From a pentester's point of view, `0x55` is probably the most important. The Version Name tends to track the software that's actually on the wire, parsing PDUs. That's the majority of the attack surface: which library's bugs you get, regardless of whose product.
+
+The PR handles this by doing table lookups on **both** fields independently and surfacing what each one says. So:
 
 - If `0x52` and `0x55` disagree, that's a useful signal: an OEM customized the stack, and you should look up the OID to find who.
 - If both fields point at the same open-source stack, the manufacturer probably never registered their own OID.
 
-From a pentester's point of view, `0x55` is probably the most important. Implementation *Class* is about the OEM vendor's identity on paper, but the Version Name tends to track the code that's actually on the wire parsing your PDUs. That's the attack surface: the version string tells you which library's bugs you get to play with, regardless of whose DICOM product you're testing.
-
-### Beyond Nmap
+### Beyond Nmap (Scapy)
 
 The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure, including an optional User Identity sub-item (Type `0x58`) that supports username/passcode, Kerberos, SAML, and JWT. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials, so "associated" doesn't always mean "full access."
 
-This is where my [Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) comes in. Once Nmap tells you you're talking to DCMTK 3.6.9, you can use Scapy to send a C-FIND and see if the AE Title you negotiated actually has query access, or craft a malformed PDU to test the parser. I'll cover that workflow in a future post.
+This is where my [Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) comes in. Once Nmap tells you who or what you're talking to, you can use Scapy to send a C-FIND, or craft a malformed image PDU to test a parser. I'll cover that workflow in a future post.
 
-As a taste, here's what it looks like to craft an A-ASSOCIATE-RQ that carries a username and passcode via the User Identity sub-item from PS3.7 §D.3.3.7, the same field path Nmap doesn't touch:
+As a taste, here's what the Scapy packet format looks like when crafting an A-ASSOCIATE-RQ that carries username and passcode:
 
 ```python
 DICOM()/A_ASSOCIATE_RQ(calling_ae_title="PENTEST", called_ae_title="ANY-SCP",
     variable_items=[DICOMUserIdentity(user_identity_type=2,
         primary_field=b"admin", secondary_field=b"password")])
 ```
+Similar to the AE title brute force, we can hook username and password variables to cycle through any standard or custom wordlists (ex seclists medical devices). 
 
 ## References
 

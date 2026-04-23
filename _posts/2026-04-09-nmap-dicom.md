@@ -4,9 +4,9 @@ title: "DICOM Security 101: Network Security with Nmap"
 mermaid: true
 ---
 
-**Read the title.** Network protocol only. File stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}). If you get the urge to "you forgot about" me, please read that article.
-
 Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post attempts to give you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover my Nmap DICOM PR on fingerprinting DICOM systems, and touch briefly on my Scapy DICOM PR.
+
+First **read the title.** This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}). So if you get the urge to "you forgot about", please read that article first.
 
 ## Prior Work
 

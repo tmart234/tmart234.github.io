@@ -50,7 +50,6 @@ A-ASSOCIATE layers three authorization controls, none of which prove identity (t
 | Called AE Title (fixed header) | Whether the association is accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | Which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 | Transfer Syntax (sub-item 0x40 inside 0x21) | Which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted (Implicit VR downgrade, rare JPEG variants) |
-| DIMSE-level checks (post-association, per-message) | A specific op on a specific object within accepted scope | Per-op + per-object | Usually absent: "associated = fully authorized" |
 
 Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
 

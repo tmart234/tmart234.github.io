@@ -197,7 +197,7 @@ The PR handles this by doing table lookups on **both** fields independently and 
 
 ### Beyond Nmap (Scapy)
 
-The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure, including the User Identity sub-item covered earlier. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials, so "associated" doesn't always mean "full access."
+The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure, optionally including the User Identity sub-item covered earlier. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials, so "associated" doesn't always mean "full access."
 
 This is where my [Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) comes in. Once Nmap tells you who or what you're talking to, you can use Scapy to send a C-FIND, or craft a malformed image PDU to test a parser. I'll cover that workflow in a future post.
 

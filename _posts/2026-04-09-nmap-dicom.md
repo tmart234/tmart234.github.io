@@ -76,7 +76,7 @@ Mutual TLS is rare in the field. When it exists, it's frequently server-auth onl
 
 The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
 
-And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE"; it means "only clients with a trusted cert can connect, and then AE Title ACLs decide what they can do."
+And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE."
 
 ## What Nmap Already Does for DICOM
 
@@ -134,7 +134,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it reports `Any AET is accepted (Insecure)`. That's the signal that the first row of the Three Gates from `## Auth in DICOM` above is failing open: an identifier being repurposed as a weak ACL, wildcard-style.
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it reports `Any AET is accepted (Insecure)`. That's the signal that the first row of the Three Gates from `## Auth in DICOM` above is failing open: an identifier being repurposed as the gate itself, wildcard-style.
 
 ### 3. AE Title Brute Force
 
@@ -160,7 +160,7 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 
 Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`, so brute the AE Title gate *first* (no `0x58`), then, once the AET is good, add `0x58` and brute credentials. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 
-Symmetric with the A-ASSOCIATE-AC fingerprinting below: the AC tells you who built the stack, the RJ tells you which gate you tripped on.
+The AC tells you who built the stack, the RJ tells you which gate you tripped on.
 
 ## Adding Vendor & Version Fingerprinting
 
@@ -197,7 +197,7 @@ The PR handles this by doing table lookups on **both** fields independently and 
 
 ### Beyond Nmap (Scapy)
 
-The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure, including an optional User Identity sub-item (Type `0x58`) that supports username/passcode, Kerberos, SAML, and JWT. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials, so "associated" doesn't always mean "full access."
+The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure, optionally including the User Identity sub-item covered earlier. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials, so "associated" doesn't always mean "full access."
 
 This is where my [Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) comes in. Once Nmap tells you who or what you're talking to, you can use Scapy to send a C-FIND, or craft a malformed image PDU to test a parser. I'll cover that workflow in a future post.
 

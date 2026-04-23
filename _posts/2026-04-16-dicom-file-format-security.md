@@ -44,6 +44,10 @@ Beyond the profiles, the spec defines two attributes in the [SOP Common Module](
 
 Open a random `.dcm` in [Innolitics' DICOM browser](https://dicom.innolitics.com/ciods) and look. The absence of these tags is the finding.
 
+## Vendor-Specific File-Level Authorization
+
+The [101]({% post_url 2026-04-09-nmap-dicom %}) flagged that some vendors bolt DIMSE-level authorization on top of A-ASSOCIATE — per-operation checks the spec doesn't require. The file-format parallel exists in the wild: import pipelines that actually enforce `SOP Instance Status`, allowlist sender `Implementation Class UID`s, or refuse files whose preamble isn't zeroed. None of it is in PS3.10, none of it is interoperable, and almost none of it shows up in conformance statements. During product testing: if a vendor enforces something at import, find it. If they don't, that's the finding.
+
 ## DICOM Files as Malware Containers
 
 ### The Preamble Polyglot

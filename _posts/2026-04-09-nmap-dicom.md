@@ -35,9 +35,9 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 | `C-ECHO` | Protocol ping. Sent over an established A-ASSOCIATE, the step Nmap's `dicom-ping` skips. |
 | `C-STORE` | Upload DICOM objects to the peer. Entry point for file-format fuzzing. |
 | `C-FIND` | Query: patient lists, studies, series, Modality Worklist. PHI exposure or authorization-scoping check. |
-| `C-MOVE` | Peer opens a new association to a destination *you* name. SSRF-adjacent pivot primitive. |
-| `C-GET` | Same idea on the existing connection. Rare in the wild; try when `C-MOVE` is blocked. |
-| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow and event verbs: MPPS, Storage Commitment, Print. ACLs routinely forget them, which is where the misconfig lives. |
+| `C-MOVE` | Client names a destination AE Title; server opens a new A-ASSOCIATE there and C-STOREs the objects to it. SSRF-adjacent pivot primitive. |
+| `C-GET` | Server returns objects over the current association — no second outbound connection, so not a pivot. Rare because it needs reverse-role negotiation for Storage SOP classes; try when `C-MOVE` is blocked. |
+| **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow/event verbs: MPPS state, Storage Commitment receipts, Print. No pixel data, so audit rules and threat models routinely skip them (see paragraph above). |
 
 Those three layers — AE Titles gate *whether you can ask*, presentation contexts gate *what you can ask*, DIMSE services are *what you ask for* — are what the next section frames as gates. Real deployments get the layering wrong constantly.
 

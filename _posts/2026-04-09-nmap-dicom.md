@@ -165,7 +165,7 @@ The AC tells you who built the stack, the RJ tells you which gate you tripped on
 
 I submitted a PR to Nmap to add basic DICOM vendor and version detection [[2]](#references). Seems boring on the surface, but it's core to what Nmap does: fingerprinting. Default tooling should ship with first-class identification of what stack you're talking to. Nmap's didn't, so I wrote it.
 
-Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fancy diagrams — and by "fancy" I mean one Mermaid diagram and some ASCII art.
+Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fancy diagrams — and by "fancy" I mean mermaid diagrams and ascii art.
 
 ### The Insight
 

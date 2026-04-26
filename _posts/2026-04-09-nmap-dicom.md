@@ -10,7 +10,7 @@ First **read the title.** This is network protocol only. DICOM file security stu
 
 ## Prior Work
 
-The baseline DICOM tooling in Nmap is Paulino Calderon's work [[1]](#references): he wrote the `dicom` NSE (Nmap Scripting engine) library, the `dicom-ping` discovery script, and the `dicom-brute` AE Title brute-forcer script in 2019. The DICOM fingerprinting, discussed later, is about tying up lose ends from the original ping script. 
+The baseline DICOM tooling in Nmap is Paulino Calderon's work [[1]](#references): he wrote the `dicom` NSE (Nmap Scripting Engine) library, the `dicom-ping` discovery script, and the `dicom-brute` AE Title brute-forcer script in 2019. The DICOM fingerprinting, discussed later, is about tying up loose ends from the original ping script. 
 
 ## Flavors of DICOM
 
@@ -83,7 +83,7 @@ With the auth model in hand, here's what Nmap already ships to probe it. Two DIC
 
 ### 1. Port Scanning
 
-```
+```bash
 nmap -sS -p 104 <target>
 ```
 
@@ -91,13 +91,13 @@ Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 
 
 ### 2. DICOM Discovery (dicom-ping)
 
-```
+```bash
 nmap -sC -p 104 <target>
 ```
 
 With Nmap's default scripts enabled (`-sC`), the `dicom-ping` script runs automatically. `-A` will also pull it in, but `-A` is `-sC` plus OS detection, version detection, and traceroute, which could be more than you want to throw at a hospital network. For DICOM recon specifically, starting at the targeted `-sC -p 104` is best. Either way, here's the thing: this "ping" is not a real DICOM ping because it never sends a C-ECHO. It only does the first half, the A-ASSOCIATE request/response handshake. That's it.
 
-A successful association (AE accepted) or even an unsuccessful (AE-reject response) is enough for Nmap to report: `DICOM Service Provider discovered!` So the script sees the server speak DICOM and calls it a day. No full C-ECHO, no verification of actual DICOM service capability. Just the associate handshake.
+A successful association (AE accepted) or even an unsuccessful (A-ASSOCIATE-RJ) is enough for Nmap to report: `DICOM Service Provider discovered!` So the script sees the server speak DICOM and calls it a day. No full C-ECHO, no verification of actual DICOM service capability. Just the associate handshake.
 
 #### How This Works
 
@@ -137,13 +137,13 @@ One script-specific note: when `dicom-ping` gets an association accepted using t
 
 ### 3. AE Title Brute Force
 
-```
+```bash
 nmap --script dicom-brute <target>
 # With a custom wordlist:
-nmap --script dicom-brute --script-args passdb=aets.txt <target>
+nmap --script dicom-brute --script-args dicom-brute.aets=aets.txt <target>
 ```
 
-`dicom-brute` is categorized under `auth` and `brute`, not `default`, so `-sC` won't pull it in. You have to call it explicitly. The most important script argument here is `passdb`, which lets you specify a wordlist for guessing the called AE Title.
+`dicom-brute` is categorized under `auth` and `brute`, not `default`, so `-sC` won't pull it in. You have to call it explicitly. The most important script argument here is `dicom-brute.aets`, which lets you specify a wordlist for guessing the called AE Title.
 
 If `dicom-ping` came back rejected, or came back accepted under `ANY-SCP` and you want to enumerate real AETs, this is your next move. Feed it a list of common AE Titles and see what sticks.
 
@@ -157,15 +157,15 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
 | 1 / 2 / 1 (rejected permanent, service-provider/ACSE, no reason given) | Spec-compliant credential miss per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html). AE Title was accepted, user identity was not. | Keep the AET, brute `0x58` credential forms. |
 
-Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`, so brute the AE Title gate *first* (no `0x58`), then, once the AET is good, add `0x58` and brute credentials. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
+Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 
 The AC tells you who built the stack, the RJ tells you which gate you tripped on.
 
 ## Adding Vendor & Version Fingerprinting
 
-I submitted a PR to Nmap to add basic DICOM vendor and version detection [[2]](#references). Seems boring on the surface, but it's core to what Nmap does: fingerprinting. And I felt strongly that default tooling should have default support for identifying what DICOM implementation you're talking to.
+I submitted a PR to Nmap to add basic DICOM vendor and version detection [[2]](#references). Seems boring on the surface, but it's core to what Nmap does: fingerprinting. Default tooling should ship with first-class identification of what stack you're talking to. Nmap's didn't, so I wrote it.
 
-Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fancy diagrams — and by "fancy" I mean one JPEG and some ASCII art.
+Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fancy diagrams — and by "fancy" I mean one Mermaid diagram and some ASCII art.
 
 ### The Insight
 
@@ -177,7 +177,7 @@ Each Item Type `0x21` is the server's commitment to one **Presentation Context**
 
 The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
 
-**Implementation Class UID (Type 0x52):** A DICOM UID in dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK (a software library), while [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) maps to GE Medical Systems (a device manufacturer) — exactly the sw-lib-vs-OEM distinction the next section turns into a fingerprinting primitive.
+**Implementation Class UID (Type 0x52):** A DICOM UID in dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK (a software library), while [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) maps to GE Medical Systems (a device manufacturer) — exactly the software-library vs OEM distinction the next section turns into a fingerprinting primitive.
 
 **Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9 [[3]](#references). Worth noting: per the spec, 0x52 is mandatory in the A-ASSOCIATE-AC but 0x55 is *optional*, so a conforming implementation can omit it entirely. Most real-world implementations do send it, and the PR falls back gracefully when they don't.
 
@@ -185,7 +185,7 @@ The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`)
 
 I spent time here investigating which of these actually matters, and the answer is: both, but for different reasons.
 
-In theory `0x52`, the Implementation Class UID, is the authoritative vendor identifier for who (MDM) manufactured the device. As the name *Implementation* implies... it identifies the vendor implementing the DICOM thing. But in practice, a lot of lazy MDMs ship devices with a third-party software stack's UID (DCMTK, dcm4che, pynetdicom) and don't override it. So `0x52` would happily report "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
+In theory `0x52` is the authoritative vendor identifier — the medical device manufacturer (MDM) implementing the DICOM stack. In practice, a lot of lazy MDMs ship devices with a third-party stack's UID (DCMTK, dcm4che, pynetdicom) and never override it. So `0x52` would happily report "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
 
 From a pentester's point of view, `0x55` is probably the most important. The Version Name tends to track the software that's actually on the wire, parsing PDUs. That's the majority of the attack surface: which library's bugs you get, regardless of whose product.
 

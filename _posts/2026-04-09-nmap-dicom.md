@@ -43,13 +43,12 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 
 ## Auth in DICOM
 
-A-ASSOCIATE layers three authorization controls, none of which prove identity. The server decides: can this peer connect, what operations is the association allowed to perform, and in what encodings.
+A-ASSOCIATE layers two authorization controls, none of which prove identity. The server decides: can this peer connect, and what operations is the association allowed to perform.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
 | Called AE Title (fixed header) | *Whether you can ask* — is the association accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask* — which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
-| Transfer Syntax (sub-item 0x40 inside 0x21) | *How you can ask* — which byte encodings the accepted operations may use | Per-encoding | Obsolete/rare syntaxes accepted (Implicit VR downgrade, rare JPEG variants) |
 
 Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
 
@@ -173,7 +172,7 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 
 {% include associate_ac_pdu.html %}
 
-Each Item Type `0x21` is the server's commitment to one **Presentation Context** from the RQ's proposals: a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That negotiation is itself an attack primitive: downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder.
+Each Item Type `0x21` is the server's commitment to one **Presentation Context** from the RQ's proposals: a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That per-encoding negotiation is itself an attack primitive — *how* you can ask, beyond the two auth gates above. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder. Servers that accept obsolete or rare syntaxes by default hand you the lever for free.
 
 The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
 

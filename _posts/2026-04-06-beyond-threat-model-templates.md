@@ -1,6 +1,8 @@
 ---
 layout: post
 title: Beyond Threat Model Templates
+description: "Asset-centric templates can't capture business risk. A more matured take that mixes templates, process, and user-needs threat modeling."
+tags: [threat-modeling]
 ---
 
 My viewpoint on threat modeling has matured since my [last post on templates](/threat-model-template/). Recently, I have been using a combination of template threat modeling, combined with process and user-needs threat modeling with some GenAI sprinkled in to help out. If you're not familiar with template threat modeling, check out [my other post](/threat-model-template/).

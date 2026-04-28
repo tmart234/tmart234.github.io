@@ -1,6 +1,8 @@
 ---
 layout: post
 title: Threat Modeling Generation Taxonomy
+description: "All threat modeling methods abstract reality; what differs is the entry point. A taxonomy of how generation methods produce threats."
+tags: [threat-modeling]
 mermaid: true
 ---
 

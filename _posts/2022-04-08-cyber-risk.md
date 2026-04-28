@@ -1,6 +1,8 @@
 ---
 layout: post
 title: Cybersecurity Risk
+description: "Why CVSS isn't risk: critiques of the formula, the missing context, and what a real risk analysis actually demands."
+tags: [risk, cvss]
 ---
 
 I wanted to discuss some shower thoughts that I've had recently around how we perceive Cybersecurity risk. I recognize that the subject of cybersecurity risk is not very sexy. So being my first post, I gave the blog a HOT title.

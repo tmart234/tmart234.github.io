@@ -1,6 +1,8 @@
 ---
 layout: post
 title: "PASTA, Attack Trees, Did We Do a Good Job, and the Infrastructure Nobody Built"
+description: "Scoring timing (CVSS vs CWSS vs SSVC), PASTA's gaps, where to start a model, and the threat-modeling infrastructure nobody has built yet."
+tags: [threat-modeling, risk, cvss]
 ---
 
 I've been kicking around some ideas on threat modeling lately -- scoring timing, PASTA's problem, where to start, and some project ideas that keep nagging at me. None of this is groundbreaking. Most of it is stuff the community has been circling for years.

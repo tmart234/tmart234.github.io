@@ -1,6 +1,8 @@
 ---
 layout: post
 title: "Threat Models and Whitewater River Paddling"
+description: "The same risk-thinking that runs a medical device threat model runs a whitewater rafting trip. A side-by-side."
+tags: [threat-modeling, risk]
 ---
 
 Threat models and risk assessments are universal. If you have the mentality, you can consistently apply it in all aspects. I spend a lot of time thinking about medical device security, but I also spend a lot of time on rivers doing whitewater rafting and kayaking. The crossover between the two is striking.

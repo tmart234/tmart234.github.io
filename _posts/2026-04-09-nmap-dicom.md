@@ -1,6 +1,8 @@
 ---
 layout: post
 title: "DICOM Security 101: Network Security with Nmap"
+description: "DICOM Security 101: network-level attack surface, what Nmap's DICOM scripts actually do, and a walkthrough of my fingerprinting PR."
+tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 

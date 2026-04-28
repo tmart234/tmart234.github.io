@@ -23,6 +23,8 @@ After studying beta, you mitigate by planning according to least risky options. 
 
 This is exactly what happens in a premarket SW development stage threat modeling. You study the architecture, the intended deployment environment, known attack patterns (CAPECs), user and business needs. You build a model. You plan mitigations based on least risky options. You haven't been attacked or encounter actual risk yet. But you've built the initial set of assumptions to reason against.
 
+And once you commit to the run, you commit to the run. There's a take-out at the bottom -- but you can't end early, and the canyon walls are too steep to climb out partway through. Whatever you put in with is what you have. This is the asymmetry that makes premarket device security different from IT security. The paddler who picked a bad plan still has to paddle out, but only the paddler is on the line. The manufacturer who shipped a bad device has patients in the field, and you can't recall an implant the way IT rolls back a deployment in an afternoon. The plan you build before launch is the plan you're running.
+
 And weight your model toward the right hazards. The whitewater that kills paddlers is rarely the loud, frothy stuff -- it's the quiet structural hazards: strainers (downed trees that let water through but stop a body), undercut rocks, sieves. They don't look dangerous until you're already in them. Threat models drift the same way. Splashy zero-days dominate the conversation, but the actual breaches are usually supply-chain compromise, insider threats, or a misconfiguration that's been sitting there for months. If your model spends all its time on the loud stuff, it's missing what actually drowns people.
 
 ## 3. Update Your Threat Model 🧠
@@ -34,8 +36,6 @@ At the river, the paddler will scout rapids. Scouting is the act of stopping, ge
 Threat modeling is never a one-and-done activity. It is routine to have initial assumptions break. Each time new information appears, the paddler updates their mental threat model, reassesses the risk, and considers how they will mitigate it during the run. Maybe the line you planned doesn't work at this water level. Maybe the control you designed doesn't cover the threat you just identified. Either way, you adapt the model or you're running blind.
 
 Scouting becomes mandatory at a horizon line -- the point where the river drops out of sight and you can't read what's below. Threat models hit them too: AI/ML on the device, a new wireless protocol, a post-quantum migration. Prior beta doesn't apply, so you stop, get out, and scout deliberately.
-
-And once you commit to the run, you commit to the run. Drop into a canyon with no take-out and there's no road, no trail, no eddy big enough to climb out of -- you finish because finishing is the only way out. This is the asymmetry that makes premarket device security different from IT security. The paddler who picked a bad canyon still has to paddle out, but only the paddler is on the line. The manufacturer who shipped a bad device has patients in the field, and you can't recall an implant the way IT rolls back a deployment in an afternoon. Scouting -- doing the threat model deliberately, before you put in -- carries weight that a sprint retrospective doesn't.
 
 Sometimes scouting rapids leads to a different call entirely: to portage. You look at the rapid, recognize a hazard you can't control for, and walk around it -- an uncontrolled risk, abstained from entirely. When your life is on the line, this is what making the right call looks like. But this is where the analogy strains, because portaging -- abstaining -- is the ideal response to an uncontrolled risk. The paddler gets to portage; the product security team rarely does. Management and the weight of a release schedule usually won't let a feature be pulled or a device held back because an uncontrolled cyber risk was identified late. The paddler walks around the rapid. The security team is told to run it anyway -- which is exactly why updating the threat model matters, because your existing mitigations have to do the work.
 
@@ -57,11 +57,7 @@ This mentality is healthy. It doesn't mean you stop trying to stay in the boat. 
 
 ## 6. It's a Team Sport 🛶
 
-Whitewater is not a solo activity. You go out with a group: a lead boat picking the line, a sweep boat at the back so nobody gets left behind, throw bags pre-positioned on shore at the sketchy moves, and whistle signals everyone agreed on before launch. Paddlers call this "setting safety before the run" -- the rescue goes in place before anyone needs it. A crew boat makes the point sharper: one person off-timing flips the whole hull.
-
-Security maps cleanly. Architecture is the lead boat. Incident response is the sweep. Compensating controls are the throw bags staged before launch, not stood up mid-breach. Out-of-band comms are the whistle signals -- a pre-agreed channel for when the normal one is the thing that's compromised.
-
-And security is cross-functional or it isn't security. We're all boats on the same river -- architecture, product, ops, clinical, regulatory -- and each crew sees a different part of the line. Try to threat model without them in the room and the model you produce will be missing exactly the parts that matter most.
+Whitewater is not a solo activity. You go out with a group: a lead boat picking the line, a sweep boat at the back so nobody gets left behind, throw bags pre-positioned on shore at the sketchy moves, and whistle signals everyone agreed on before launch. Paddlers call this "setting safety before the run" -- the rescue goes in place before anyone needs it.
 
 ## 7. Redundancy and Preparation 🛟
 

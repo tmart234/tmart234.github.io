@@ -64,17 +64,21 @@ The catch: **there is no dedicated reject *reason* code for a credential miss**.
 
 ### TLS: Specified, Inconsistently Deployed
 
-[PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines TLS profiles (including BCP 195-aligned ones) with mutual authentication. The spec is fine. The *deployments* are not.
+[PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines TLS profiles, BCP 195-aligned, mutual-auth capable. On paper, DICOM has had real cryptographic transport security for two decades. In the field, almost no clinical traffic uses it.
 
-There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing.
+The reasons aren't mysterious. There's no STARTTLS in A-ASSOCIATE and no in-band signal that a peer requires TLS, so a listener on 104 either speaks DICOM in the clear or it speaks TLS, and the only way to find out is to probe. Port 2762 is `dicom-tls` per IANA, but vendors run TLS on 104 or 11112 because their config UI has one "DICOM port" field and a "use TLS" checkbox. Cert management is brittle, vendor support uneven. So integrators do what integrators always do: skip the protocol-native answer and bolt encryption on at a layer they understand.
 
-Port 2762 is `dicom-tls` per IANA, but plenty of real deployments just run TLS on 104 or 11112 because the vendor's config has exactly one "DICOM port" field and a "use TLS" checkbox. The port tells you very little on its own.
+That bolting-on takes one of four forms. Only the last is actual DICOM TLS.
 
-Mutual TLS is rare in the field. When it exists, it's frequently server-auth only with the AE Title standing in as the "client identity", which, per the previous section, is not authentication.
+The dominant pattern, anywhere the word "cloud" appears, is DICOMweb behind an API gateway: WADO-RS, QIDO-RS, and STOW-RS over HTTPS with OAuth2 or OIDC at the edge. Google Cloud Healthcare API, AWS HealthImaging, Azure DICOM Service, and every modern teleradiology SaaS platform ship this. The Ports table flagged DICOMweb out of scope because there's no Nmap NSE coverage for it yet. Fair, but worth being explicit: when DICOM crosses the WAN, this is the wire it crosses on.
 
-The other common pattern is mutual TLS against a flat, hospital-wide CA, which makes every modality's cert trusted to act as every other modality. Revocation checking? Almost never configured.
+The second pattern is older and uglier: a site-to-site VPN with plain DIMSE inside the tunnel. Overwhelmingly common for teleradiology reading centers. The "TLS" is the IPsec or SSL-VPN, not DICOM TLS, and the DICOM payload on the inside hop is plaintext. Pop the reading center and you have unauthenticated DIMSE to the hospital PACS, AE Title gate notwithstanding. That endpoint, by the way, is often a Windows box in a strip mall under a radiologist's desk.
 
-And this is the piece most people miss: **the layering**. TLS authenticates the transport peer. AE Title still gates the DICOM payload. "We have mutual TLS" does not mean "only authorized clients can C-STORE."
+The third pattern is the image exchange network: Nuance PowerShare, Life Image, the Intelerad/Ambra stack. HTTPS brokers that federate sites under vendor-specific auth fabric. Architecturally these are managed DICOMweb gateways with a sales team.
+
+The fourth is the spec's own answer: DICOM TLS over the WAN, on port 2762 or wrapped 11112. Rare in practice for the reasons given above. Where you see it, it's almost always inside a single health system, not between organizations.
+
+Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check covered above. The transport got authenticated. The DICOM verbs didn't. And mutual TLS itself, where it shows up, usually rides a flat hospital-wide CA — every modality's cert trusted to act as every other modality, revocation never configured. More commonly it's server-auth only, with the AE Title playing "client identity," which, per the previous section, isn't authentication.
 
 ## What Nmap Already Does for DICOM
 

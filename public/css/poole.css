@@ -352,6 +352,55 @@ tbody tr:nth-child(odd) th {
   color: #9a9a9a;
 }
 
+/* Index post pitch */
+.post-description {
+  color: #515151;
+  margin-bottom: .75rem;
+}
+
+/* Tag pills */
+.post-tags {
+  margin-top: 1.25rem;
+  font-size: .85rem;
+}
+.post-tag {
+  display: inline-block;
+  padding: .15rem .55rem;
+  margin-right: .35rem;
+  margin-bottom: .35rem;
+  color: #555;
+  background-color: #f3f3f3;
+  border-radius: 3px;
+}
+.post-tag:hover,
+.post-tag:focus {
+  background-color: #e9e9e9;
+  text-decoration: none;
+}
+
+/* Tags page */
+.tag-cloud {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 2rem;
+}
+.tag-cloud li {
+  display: inline-block;
+  margin-right: .35rem;
+  margin-bottom: .35rem;
+}
+.tag-cloud a {
+  display: inline-block;
+  padding: .2rem .6rem;
+  background-color: #f3f3f3;
+  border-radius: 3px;
+  color: #444;
+}
+.tag-cloud a:hover { background-color: #e9e9e9; text-decoration: none; }
+.tag-posts { list-style: none; padding-left: 0; }
+.tag-posts li { margin-bottom: .35rem; }
+.tag-posts small { color: #999; margin-left: .35rem; }
+
 /* Related posts */
 .related {
   padding-top: 2rem;

@@ -1,6 +1,8 @@
 ---
 layout: post
 title: Threat Modeling Knowledge Bases and Templates
+description: "Frustrations and aspirations on threat modeling — where templates and knowledge bases earn their keep, and where they collapse."
+tags: [threat-modeling]
 ---
 
 A mix of frustrations, aspirations, and unsolicited opinions regarding the current state of Threat Modeling are initially what prompted me to write this post.

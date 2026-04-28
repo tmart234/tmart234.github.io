@@ -1,6 +1,8 @@
 ---
 layout: post
 title: "The Security Mindset: A Field Guide for Junior Engineers"
+description: "A field guide for junior security engineers — divergent thinking, persistence, and the mindset multiplier that beats any tool or cert."
+tags: [career, medical-devices]
 mermaid: true
 ---
 

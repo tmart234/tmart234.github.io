@@ -15,6 +15,8 @@ Neither domain can avoid or abstain from risk entirely. Whitewater paddlers acce
 
 Paddlers don't get to remove the rocks from the river. Similarly, Security teams can't remove their device or change things in the environment. Both must prepare to engage with the inherent risks of where they operate, not pretend those risks don't exist, claim invulnerability, or wish them away. The stakes are high, so ditch the paranoia. Environmental risk acceptance isn't negligence.
 
+And not all hazards announce themselves. The whitewater that kills paddlers is rarely the loud, frothy stuff that grabs your attention -- it's the quiet structural hazards: strainers (downed trees that let water through but stop a body), undercut rocks, sieves. They don't look dangerous until you're already in them. Security is the same. Splashy zero-days get the headlines, but the actual breaches are almost always supply-chain compromise, insider threats, or a misconfiguration that's been sitting there for months. Boring, structural, easy to walk past. That's what gets people.
+
 ## 2. A Solid Plan and Threat Model is 🔑
 
 When preparing for difficult whitewater, paddlers study river features before ever getting to the river (put-in). This comes from a collection of known information -- what paddlers call "beta." Beta is the aggregate knowledge from guidebooks, trip reports, gauge readings, and the guy at the gas station who's lived on that river for forty years. Beta creates the initial mental threat model you use to avoid danger.
@@ -29,11 +31,15 @@ At the river, the paddler will scout rapids. Scouting is the act of stopping, ge
 
 ![Scouting rapids from shore](https://media.oars.com/wp-content/uploads/2022/08/21063353/Crystal.jpg)
 
-Threat modeling is never a one-and-done activity. It is routine to have initial assumptiins break. Each time new information appears, the paddler updates their mental threat model, reassesses the risk, and considers how they will mitigate it during the run. Maybe the line you planned doesn't work at this water level. Maybe the control you designed doesn't cover the threat you just identified. Either way, you adapt the model or you're running blind.
+Threat modeling is never a one-and-done activity. It is routine to have initial assumptions break. Each time new information appears, the paddler updates their mental threat model, reassesses the risk, and considers how they will mitigate it during the run. Maybe the line you planned doesn't work at this water level. Maybe the control you designed doesn't cover the threat you just identified. Either way, you adapt the model or you're running blind.
+
+Sometimes you scout because you have to: you've hit a horizon line. That's the point on the river where the water drops out of sight and you literally cannot see what's below the edge. There is no read-and-run on a horizon line -- you stop, you get out, you scout, every time. Threat models hit horizon lines too. Novel attack surfaces where prior beta doesn't apply: AI/ML running on the device, a new wireless protocol, a post-quantum crypto transition. You haven't lost the ability to ship; you've lost the ability to see past the edge. That's when threat modeling stops being a checklist and becomes deliberate scouting -- slower, more skeptical, and explicitly aware of what you don't know.
+
+And once you commit past a certain point in the rapid, you can't paddle back upstream. The line you picked is the line you're running. This asymmetry is what makes premarket device security different from IT security. The paddler who picked the wrong line still has to finish the rapid -- but at least the only person on the line is the paddler. The manufacturer who shipped the wrong line has patients in the field. IT can roll back a deployment in an afternoon; you can't recall an implant. Scouting -- doing the threat model deliberately, before commit -- carries weight that a sprint retrospective doesn't.
 
 Sometimes scouting rapids leads to a different call entirely: to portage. You look at the rapid, recognize a hazard you can't control for, and walk around it -- an uncontrolled risk, abstained from entirely. When your life is on the line, this is what making the right call looks like. But this is where the analogy strains, because portaging -- abstaining -- is the ideal response to an uncontrolled risk. The paddler gets to portage; the product security team rarely does. Management and the weight of a release schedule usually won't let a feature be pulled or a device held back because an uncontrolled cyber risk was identified late. The paddler walks around the rapid. The security team is told to run it anyway -- which is exactly why updating the threat model matters, because your existing mitigations have to do the work.
 
-The teams that treat their threat model as a static document delivered once during design review are the teams that get surprised.. just like the paddlers who only go off Beta/previous knowledge stand a higher potentil to incur risk (or swim).
+The teams that treat their threat model as a static document delivered once during design review are the teams that get surprised.. just like the paddlers who only go off Beta/previous knowledge stand a higher potential to incur risk (or swim).
 
 ## 4. Real-Time Monitoring 👀
 
@@ -49,7 +55,15 @@ In cybersecurity, breaches or attacks happen despite your best efforts. The "eve
 
 This mentality is healthy. It doesn't mean you stop trying to stay in the boat. It means you plan for what happens when you don't. It means you practice your roll, your wet exit, your self-rescue -- because the swim is coming eventually, and the only variable is how well you handle it.
 
-## 6. Redundancy and Preparation 🛟
+## 6. It's a Team Sport 🛶
+
+Whitewater is not a solo activity. You don't paddle hard rapids alone -- you go out with a group. There's a lead boat picking the line, a sweep boat at the back of the pack making sure no one gets left behind, throw bags pre-positioned on shore at the sketchy moves, and a set of whistle signals everyone agreed on before the run. Paddlers call this "setting safety before the run." You put the rescue in place before anyone needs it, not after. A crew boat with multiple paddlers in the same hull only amplifies that point: it works when everyone knows their role and the calls are clear, and it goes over when one person is paddling on their own timeline.
+
+Security works the same way. The lead boat is the architecture team picking the line. The sweep boat is incident response, watching the back of the run for the people who fell behind. The throw bags pre-positioned on shore are compensating controls staged before launch -- not stood up after the breach, when the swimmer is already past you. The whistle signals are out-of-band communications: when your normal channels are the thing that's compromised, you need a pre-agreed way to coordinate that doesn't depend on the systems you're trying to defend.
+
+If you're doing security alone, you're paddling the rapid alone. That's not how the people who come back consistently do it.
+
+## 7. Redundancy and Preparation 🛟
 
 ![River rescue training](https://www.whitewaterrescue.com/wp-content/uploads/2017/07/2017_WRI_066_Med.jpg)
 

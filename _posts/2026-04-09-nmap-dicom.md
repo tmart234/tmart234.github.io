@@ -48,6 +48,8 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 | Called AE Title (fixed header) | *Whether you can ask* — is the association accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask* — which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
+The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+
 Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
 
 - **DICOM TLS** — authenticates the transport peer. Mutual-auth capable.
@@ -194,11 +196,9 @@ The PR handles this by doing table lookups on **both** fields independently and 
 
 ## Capability Enumeration (dicom-enum)
 
-`dicom-ping` says the box is up. `dicom-brute` says which AET works. Neither tells you what the box does, what SOP classes it'll accept, or where it's been misconfigured. [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse) turns one A-ASSOCIATE into a capability map.
+Knowing the box is Orthanc 1.11.0 isn't enough. The next questions are: what role does it play on the network (image archive, work-order server, scanner, print gateway), and which kinds of objects will it accept from a peer? Both answers are sitting in the A-ASSOCIATE-AC if you ask the right thing. So I wrote [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse), a third NSE script that proposes about thirty Presentation Contexts in one A-ASSOCIATE-RQ and parses what came back per context.
 
-The lever is the Presentation Context list. `dicom-ping` proposes one PC (Verification, Implicit VR LE) and reads the AC. `dicom-enum` proposes ~30 PCs in a single RQ: Verification, the common Storage SOP classes (CT, MR, US, CR, DX, mammo, X-ray angio, encapsulated PDF, structured reports, presentation states), Modality Worklist, Patient/Study Root Q/R FIND/MOVE/GET, Storage Commitment, MPPS, Basic Grayscale Print. Storage classes get the full transfer-syntax matrix; command classes get Implicit/Explicit VR LE.
-
-The AC returns a per-PC result code per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/part08.html): accepted, user-rejection, abstract-syntax-not-supported, transfer-syntaxes-not-supported, no-reason. That map is the SCP's contract: what it accepts is what it'll process on the next C-STORE, C-FIND, or C-MOVE.
+The AC returns one of five result codes per Presentation Context per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/part08.html): accepted, user-rejection, abstract-syntax-not-supported, transfer-syntaxes-not-supported, no-reason. The script buckets them. What lands in `accepted` is what the server will process on the next DIMSE op.
 
 ```
 | dicom-enum:
@@ -222,9 +222,26 @@ The AC returns a per-PC result code per [PS3.8 §9.3.3.2](https://dicom.nema.org
 |         Modality Worklist Information Model - FIND
 ```
 
-**Device class from the accepted set.** Worklist FIND with no storage is a RIS gateway. Storage + Q/R + Storage Commitment with no Worklist is an archive front-end. Storage only is a modality posting to its uplink. `dicom-enum` calls this `inferred_device_class`. The taxonomy is practitioner consensus, not normative DICOM, and it's the right altitude for threat modeling: "PACS" is too coarse, "Orthanc 1.11.0" is too narrow.
+Each line in `accepted` pairs an object type with an encoding. The DICOM standard defines a separate Storage class for every kind of object it carries: CT images, MRs, ultrasounds, mammograms, encapsulated PDFs, structured reports, RT plans, presentation states, and several dozen more. A properly scoped SCP only accepts the types it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth noting. The accepted list is also the menu of file structures the server's parser will receive on the next C-STORE, which is the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
-**SOP-class scope.** The Storage UID isn't one thing. It's a family with a separate UID for every kind of object the standard knows how to carry: `1.2.840.10008.5.1.4.1.1.2` for CT, `...1.1.4` for MR, `...1.1.104.1` for an encapsulated PDF, plus structured reports, RT plans, presentation states. A Storage SCP accepting PDFs from a CT modality is misconfigured on both ends, and the accepted-items list shows it on one screen. The set of accepted UIDs is also the menu of file structures the parser will see on the next C-STORE. That's where [102]({% post_url 2026-04-16-dicom-file-format-security %}) picks up.
+The `inferred_device_class` line is the other half. The mapping isn't anything the spec defines (it's practitioner shorthand), but it tracks real roles in a hospital. Three patterns show up most:
+
+- **The work-order box.** Serves Modality Worklist, won't accept Storage. This is the radiology information system or its DICOM gateway: the box that tells scanners which studies they're scheduled to acquire today, with patient names, MRNs, and scheduled procedure codes attached. No images live here.
+- **The archive.** Accepts Storage from upstream, serves Query/Retrieve to downstream readers, doesn't speak Worklist. PACS, VNA, research archive. The studies and their long-term retention live here.
+- **The scanner.** Only proposes Storage as a client, no Query/Retrieve, no Worklist. The CT, MR, or ultrasound itself, pushing acquired studies to whatever's configured to receive them.
+
+Which one you're looking at changes the threat model and the next recon move. The work-order box has demographics and scheduling but no pixels; the archive has the pixels and a retention policy that probably says "forever"; the scanner has neither but is where the acquisition itself happens (and is usually the box running the oldest, most loosely-patched software on the network). "PACS" by itself doesn't get you any of that.
+
+`dicom-enum` is in the `discovery` and `safe` categories, not `brute` and not `default`. PACS networks tend to be running brittle modalities and vendor support contracts that get unhappy about unsolicited associations, and a default-category script proposing thirty Presentation Contexts at every open port would land in the wrong inbox.
+
+The recon flow, start to finish:
+
+```bash
+nmap -sC -p 104,11112,2762,4242 <target>           # ping + vendor/version
+nmap --script dicom-brute <target>                  # if the AET gate rejects
+nmap --script dicom-enum \
+     --script-args dicom.called_aet=<AET> <target>  # capability map
+```
 
 ## Beyond Nmap (Scapy)
 

@@ -48,7 +48,7 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 | Called AE Title (fixed header) | *Whether you can ask* — is the association accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask* — which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
-One thing the table elides: an AE Title is just a string in a header — the only per-device identifier classic DICOM has, and nothing binds it to a source IP. C-MOVE makes this load-bearing. The destination AE Title in a C-MOVE-RQ is a key the server looks up in its own AET → IP:port table, so naming an AET the PACS already trusts — research box, VNA, dev workstation — gets PHI shipped wherever that entry points. One physical device usually carries several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config, and naming conventions like `MR_ER_3` or `WORKLIST_PROD` are why `dicom-brute` wordlists work in the first place.
+The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
 
@@ -222,7 +222,7 @@ The AC returns one of five result codes per Presentation Context per [PS3.8 §9.
 |         Modality Worklist Information Model - FIND
 ```
 
-The accepted list is denser with information than it looks. Each line pairs an object type with an encoding. The DICOM standard defines a separate Storage class for every kind of object it knows how to carry: CT images, MRs, ultrasounds, mammograms, encapsulated PDFs, structured reports, RT plans, presentation states, and several dozen more. A Storage SCP configured for its role only accepts the object types it has reason to see. Spot a CT-modality-facing endpoint that also accepts encapsulated PDFs in the same bucket and that's a finding. Used to need a vendor-docs read. Now it's one screen of nmap output. The accepted UIDs are also the menu of dataset structures the parser will see on the next C-STORE, which is the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
+Each line in `accepted` pairs an object type with an encoding. The DICOM standard defines a separate Storage class for every kind of object it carries: CT images, MRs, ultrasounds, mammograms, encapsulated PDFs, structured reports, RT plans, presentation states, and several dozen more. A properly scoped SCP only accepts the types it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth noting. The accepted list is also the menu of file structures the server's parser will receive on the next C-STORE, which is the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
 The `inferred_device_class` line is the other half. The mapping isn't anything the spec defines (it's practitioner shorthand), but it tracks real roles in a hospital. Three patterns show up most:
 
@@ -234,7 +234,7 @@ Which one you're looking at changes the threat model and the next recon move. Th
 
 `dicom-enum` is in the `discovery` and `safe` categories, not `brute` and not `default`. PACS networks tend to be running brittle modalities and vendor support contracts that get unhappy about unsolicited associations, and a default-category script proposing thirty Presentation Contexts at every open port would land in the wrong inbox.
 
-Once both PRs are in tree, the recon flow is:
+The recon flow, start to finish:
 
 ```bash
 nmap -sC -p 104,11112,2762,4242 <target>           # ping + vendor/version

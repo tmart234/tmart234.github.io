@@ -10,11 +10,11 @@ Most people don't know that Nmap (the port scanning tool everyone and their gran
 
 First **read the title.** This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}). So if you get the urge to "you forgot about", please read that article first.
 
-## Flavors of DICOM
+## The Wire: Ports, Services, and Auth
 
 Before the Nmap tour, let's talk about different flavors of networked DICOM.
 
-### Ports
+### Flavors of DICOM
 
 | Service | Port(s) |
 | --- | --- |
@@ -26,7 +26,7 @@ DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: be
 
 ### DIMSE Services
 
-After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state: MPPS updates, storage-commitment results, print jobs.
+After association, DIMSE (DICOM Message Service Element) splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state: MPPS (Modality Performed Procedure Step) updates, storage-commitment results, print jobs.
 
 N-services get far less scrutiny. Once a peer is associated there's no per-verb auth, so an `N-SET` that flips an MPPS to COMPLETED or a forged storage-commitment `N-EVENT-REPORT` lands with the same trust as a `C-STORE`. No pixels touched, no hash mismatch, just corrupted workflow. The ones you need to know:
 
@@ -35,8 +35,8 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 | `C-ECHO` | Protocol ping. Sent over an established A-ASSOCIATE, the step Nmap's `dicom-ping` skips. |
 | `C-STORE` | Upload DICOM objects to the peer. Entry point for file-format fuzzing. |
 | `C-FIND` | Query: patient lists, studies, series, Modality Worklist. PHI exposure or authorization-scoping check. |
-| `C-MOVE` | Client names a destination AE Title; server opens a new A-ASSOCIATE there and C-STOREs the objects to it. SSRF-adjacent pivot primitive. |
-| `C-GET` | Server returns objects over the current association — no second outbound connection, so not a pivot. Rare because it needs reverse-role negotiation for Storage SOP classes; try when `C-MOVE` is blocked. |
+| `C-MOVE` | Client names a destination AE Title (Application Entity Title); server opens a new A-ASSOCIATE there and C-STOREs the objects to it. SSRF-adjacent pivot primitive. |
+| `C-GET` | Server returns objects over the current association — no second outbound connection, so not a pivot. Rare because it needs reverse-role negotiation for Storage SOP (Service-Object Pair) classes; try when `C-MOVE` is blocked. |
 | **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow/event verbs: MPPS state, Storage Commitment receipts, Print. No pixel data, so audit rules and threat models routinely skip them. |
 
 ## Auth in DICOM
@@ -46,9 +46,9 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
 | Called AE Title (fixed header) | *Whether you can ask* — is the association accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
-| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask* — which operation classes (Storage, Q/R, MWL, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
+| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask* — which operation classes (Storage, Q/R, MWL (Modality Worklist), MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
-The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 Authentication is a separate conversation from the gates above. For network authentication, DICOM supports two mechanisms:
 
@@ -60,7 +60,7 @@ Authentication is a separate conversation from the gates above. For network auth
     - SAML assertion
     - JSON Web Token (JWT)
 
-The catch: **there's no Reason code unique to credential failure**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity with Result = `1` (rejected-permanent), Source = `2` (service-provider, ACSE), Reason = `1` (no-reason-given). That's `1/2/1`. The Source byte separates it from an AE Title miss, which comes back as Source = `1` (service-user): either `1/1/7` (explicit) or the flattened `1/1/1`. Read Source first. On stacks that flatten everything to `1/1/1`, the only tell left is whether your RQ carried a `0x58` sub-item.
+The catch: **there's no Reason code unique to credential failure**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity with Result = `1` (rejected-permanent), Source = `2` (service-provider, ACSE (Association Control Service Element)), Reason = `1` (no-reason-given). That's `1/2/1`. The Source byte separates it from an AE Title miss, which comes back as Source = `1` (service-user): either `1/1/7` (explicit) or the flattened `1/1/1`. Read Source first. On stacks that flatten everything to `1/1/1`, the only tell left is whether your RQ carried a `0x58` sub-item.
 
 ### TLS: Specified, Inconsistently Deployed
 
@@ -79,7 +79,7 @@ Whatever the envelope, the inner DIMSE is still gated by the same Called AE Titl
 
 ## What Nmap Already Does for DICOM
 
-With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts, both Paulino Calderon's 2019 work [[1]](#references): `dicom-ping` (discovery) and `dicom-brute` (AE Title brute-force), riding the `dicom` NSE library he also wrote. My PRs build on that surface: fingerprinting reads bytes that already come back in the AC, and capability enumeration proposes a richer Presentation Context list to map what the SCP will accept. The `dicom-ping` loose ends are a separate diff.
+With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts, both Paulino Calderon's 2019 work [[1]](#references): `dicom-ping` (discovery) and `dicom-brute` (AE Title brute-force), riding the `dicom` NSE library he also wrote. My PRs build on that surface: fingerprinting reads bytes that already come back in the AC, and capability enumeration proposes a richer Presentation Context list to map what the SCP (Service Class Provider) will accept. The `dicom-ping` loose ends are a separate diff.
 
 ### 1. Port Scanning
 
@@ -97,7 +97,17 @@ nmap -sC -p 104 <target>
 
 With Nmap's default scripts enabled (`-sC`), the `dicom-ping` script runs automatically. `-A` will also pull it in, but `-A` is `-sC` plus OS detection, version detection, and traceroute, which could be more than you want to throw at a hospital network. For DICOM recon specifically, starting at the targeted `-sC -p 104` is best. Either way, here's the thing: this "ping" is not a real DICOM ping because it never sends a C-ECHO. It only does the first half, the A-ASSOCIATE request/response handshake. That's it.
 
-A successful association (AE accepted) or even an unsuccessful (A-ASSOCIATE-RJ) is enough for Nmap to report: `DICOM Service Provider discovered!` So the script sees the server speak DICOM and calls it a day. No full C-ECHO, no verification of actual DICOM service capability. Just the associate handshake.
+A typical run looks like this:
+
+```
+PORT     STATE SERVICE REASON
+4242/tcp open  dicom   syn-ack
+| dicom-ping:
+|   dicom: DICOM Service Provider discovered!
+|_  config: Called AET check enabled
+```
+
+A successful association (AE accepted) or even a rejected (A-ASSOCIATE-RJ) one is enough for Nmap to report. So the script sees the server speak DICOM and calls it a day. No full C-ECHO, no verification of actual DICOM service capability. Just the associate handshake.
 
 #### How This Works
 
@@ -133,7 +143,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it reports `Any AET is accepted (Insecure)` — the server is treating the wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything.
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything.
 
 ### 3. AE Title Brute Force
 
@@ -149,11 +159,11 @@ If `dicom-ping` came back rejected, or came back accepted under `ANY-SCP` and yo
 
 #### What the Reject Tells You
 
-When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dicom.nema.org/medical/dicom/current/output/html/part08.html) defines the `(Result, Source, Reason)` triple in the reject PDU. Decode it:
+When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dicom.nema.org/medical/dicom/current/output/html/part08.html) defines the `(Result, Source, Reason)` triple in the reject PDU (Protocol Data Unit). Decode it:
 
 | Result / Source / Reason | What likely happened | Pentester move |
 | --- | --- | --- |
-| 1 / 1 / 1 (rejected permanent, service-user, no reason given) | AE Title miss. On stacks that flatten credential rejections into this code (rather than the spec-compliant `1/2/1`), it can also mean a credential miss — **without** a `0x58` sub-item in your RQ, assume AE Title; **with** a `0x58`, could be either. | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
+| 1 / 1 / 1 (rejected permanent, service-user, no reason given) | AE Title miss. On stacks that flatten credential rejections into this code (rather than the spec-compliant `1/2/1`), it can also mean a credential miss. **Without** a `0x58` sub-item in your RQ, assume AE Title; **with** a `0x58`, could be either. | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
 | 1 / 2 / 1 (rejected permanent, service-provider/ACSE, no reason given) | Spec-compliant credential miss per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html). AE Title was accepted, user identity was not. | Keep the AET, brute `0x58` credential forms. |
 
@@ -165,9 +175,9 @@ The AC tells you who built the stack, the RJ tells you which gate you tripped on
 
 I submitted a PR to Nmap to add basic DICOM vendor and version detection [[2]](#references). Seems boring on the surface, but it's core to what Nmap does: fingerprinting. Default tooling should ship with first-class identification of what stack you're talking to. Nmap's didn't, so I wrote it.
 
-Who knows when the PR gets merged, so I'm writing about it now. Plus, I have fancy diagrams — and by "fancy" I mean mermaid diagrams and ascii art.
+Who knows when the PR gets merged, so I'm writing about it now.
 
-### The Insight
+### What dicom-ping Leaves on the Table
 
 After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there. No extra packets.
 
@@ -175,21 +185,40 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 
 Each Item Type `0x21` is the server's commitment to one **Presentation Context** from the RQ's proposals: a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That per-encoding negotiation is itself an attack primitive — *how* you can ask, beyond the two auth gates above. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder. Servers that accept obsolete or rare syntaxes by default hand you the lever for free.
 
-The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. A few are important:
+The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
 
-**Implementation Class UID (Type 0x52):** A DICOM UID in dot-notation, OID-shaped, with a root arc typically registered in an OID registry. The DICOM spec is explicit that UIDs "shall not be parsed" for semantic meaning beyond uniqueness, but in practice the root arc reliably identifies the implementer, which is exactly what we want for fingerprinting. For example, [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) maps to OFFIS DCMTK (a software library), while [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) maps to GE Medical Systems (a device manufacturer) — exactly the software-library vs OEM distinction the next section turns into a fingerprinting primitive.
-
-**Implementation Version Name (Type 0x55):** A free-form string parsed for version information. For example, `OFFIS_DCMTK_369` parses to DCMTK version 3.6.9 [[3]](#references). Per the spec, 0x52 is mandatory in the A-ASSOCIATE-AC; 0x55 is *optional*. Conforming implementations can omit 0x55. Most don't — and the PR handles the case where they do.
+- **`0x52` Implementation Class UID** — a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM).
+- **`0x55` Implementation Version Name** — a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). Conforming implementations can omit it, and the PR handles that case.
 
 #### Why You Need to Look Up Both
 
-I spent time here investigating which of these actually matters, and the answer is: both, but for different reasons.
-
-In theory `0x52` is the authoritative vendor identifier — the medical device manufacturer (MDM) implementing the DICOM stack. In practice, a lot of lazy MDMs ship devices with a third-party stack's UID (DCMTK, dcm4che, pynetdicom) and never override it. So `0x52` would happily report "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
+In theory `0x52` is the authoritative vendor identifier, the medical device manufacturer (MDM) implementing the DICOM stack. In practice, a lot of lazy MDMs ship devices with a third-party stack's UID (DCMTK, dcm4che, pynetdicom) and never override it. So `0x52` would happily report "OFFIS" on a device that's actually a Brand X modality with DCMTK linked in. You can't trust either field in isolation.
 
 From a pentester's point of view, `0x55` is probably the most important. The Version Name tends to track the software that's actually on the wire, parsing PDUs. That's the majority of the attack surface: which library's bugs you get, regardless of whose product.
 
-The PR handles this by doing table lookups on **both** fields independently and surfacing what each one says. So:
+The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against two OID tables, one for software toolkits and one for OEMs, so the result tags which side it came from:
+
+```lua
+local TOOLKIT_UID_PATTERNS = {
+  {"^1%.3%.6%.1%.4%.1%.25403%.",                  "ClearCanvas"},
+  {"^1%.2%.826%.0%.1%.3680043%.9%.3811%.",        "pynetdicom"},
+  {"^1%.2%.826%.0%.1%.3680043%.8%.641%.",         "Orthanc"},
+  {"^1%.2%.826%.0%.1%.3680043%.8%.1057%.",        "OsiriX/Horos"},
+  {"^1%.2%.276%.0%.7230010%.3%.",                 "DCMTK"},
+  {"^1%.2%.40%.0%.13%.1%.3",                      "dcm4che"},
+}
+
+local MANUFACTURER_UID_PATTERNS = {
+  {"^1%.2%.840%.113619%.",                        "GE Healthcare"},
+  {"^1%.3%.12%.2%.1107%.",                        "Siemens"},
+  {"^1%.2%.840%.113704%.",                        "Philips"},
+  {"^1%.3%.46%.670589%.",                         "Philips"},
+  {"^1%.2%.840%.114257%.",                        "Agfa"},
+  {"^1%.2%.392%.200036%.",                        "Fujifilm"},
+}
+```
+
+The 0x55 path uses a similar table keyed on substrings of the version string. Surfacing what each field says lets you compare:
 
 - If `0x52` and `0x55` disagree, that's a useful signal: an OEM customized the stack, and you should look up the OID to find who.
 - If both fields point at the same open-source stack, the manufacturer probably never registered their own OID.
@@ -256,7 +285,7 @@ DICOM()/A_ASSOCIATE_RQ(calling_ae_title="PENTEST", called_ae_title="ANY-SCP",
     variable_items=[DICOMUserIdentity(user_identity_type=2,
         primary_field=b"admin", secondary_field=b"password")])
 ```
-Similar to the AE title brute force, we can hook username and password variables to cycle through any standard or custom wordlists (ex seclists medical devices). 
+Similar to the AE title brute force, we can hook username and password variables to cycle through any standard or custom wordlists (e.g., the SecLists medical-devices wordlist).
 
 ## References
 

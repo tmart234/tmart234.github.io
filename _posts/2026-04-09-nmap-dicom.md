@@ -206,15 +206,6 @@ local TOOLKIT_UID_PATTERNS = {
   {"^1%.2%.276%.0%.7230010%.3%.",           "DCMTK"},
   {"^1%.2%.40%.0%.13%.1%.3",                "dcm4che"},
 }
-
-function identify_vendor_from_uid(uid)
-  if not uid then return nil, nil end
-  for _, entry in ipairs(TOOLKIT_UID_PATTERNS) do
-    if uid:match(entry[1]) then
-      return entry[2], "toolkit"
-    end
-  end
-end
 ```
 
 The 0x55 path uses a similar table keyed on substrings of the version string. Surfacing what each field says lets you compare:

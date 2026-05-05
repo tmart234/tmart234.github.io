@@ -196,15 +196,25 @@ In theory `0x52` is the authoritative vendor identifier, the medical device manu
 
 From a pentester's point of view, `0x55` is probably the most important. The Version Name tends to track the software that's actually on the wire, parsing PDUs. That's the majority of the attack surface: which library's bugs you get, regardless of whose product.
 
-The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against a vendor OID table:
+The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against two OID tables, one for software toolkits and one for OEMs, so the result tags which side it came from:
 
 ```lua
 local TOOLKIT_UID_PATTERNS = {
-  {"^1%.3%.6%.1%.4%.1%.25403%.",            "ClearCanvas"},
-  {"^1%.2%.826%.0%.1%.3680043%.9%.3811%.",  "pynetdicom"},
-  {"^1%.2%.826%.0%.1%.3680043%.8%.641%.",   "Orthanc"},
-  {"^1%.2%.276%.0%.7230010%.3%.",           "DCMTK"},
-  {"^1%.2%.40%.0%.13%.1%.3",                "dcm4che"},
+  {"^1%.3%.6%.1%.4%.1%.25403%.",                  "ClearCanvas"},
+  {"^1%.2%.826%.0%.1%.3680043%.9%.3811%.",        "pynetdicom"},
+  {"^1%.2%.826%.0%.1%.3680043%.8%.641%.",         "Orthanc"},
+  {"^1%.2%.826%.0%.1%.3680043%.8%.1057%.",        "OsiriX/Horos"},
+  {"^1%.2%.276%.0%.7230010%.3%.",                 "DCMTK"},
+  {"^1%.2%.40%.0%.13%.1%.3",                      "dcm4che"},
+}
+
+local MANUFACTURER_UID_PATTERNS = {
+  {"^1%.2%.840%.113619%.",                        "GE Healthcare"},
+  {"^1%.3%.12%.2%.1107%.",                        "Siemens"},
+  {"^1%.2%.840%.113704%.",                        "Philips"},
+  {"^1%.3%.46%.670589%.",                         "Philips"},
+  {"^1%.2%.840%.114257%.",                        "Agfa"},
+  {"^1%.2%.392%.200036%.",                        "Fujifilm"},
 }
 ```
 

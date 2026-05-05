@@ -8,11 +8,11 @@ mermaid: true
 
 Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post gives you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover two Nmap DICOM PRs — vendor/version fingerprinting and capability enumeration, and touch briefly on my Scapy DICOM PR.
 
-First **read the title.** This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}). So if you get the urge to "you forgot about", please read that article first.
+This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
 ## The Wire: Ports, Services, and Auth
 
-Before the Nmap tour, let's talk about different flavors of networked DICOM.
+Before we begin, let's talk about different types of networked DICOM.
 
 ### Flavors of DICOM
 
@@ -22,7 +22,7 @@ Before the Nmap tour, let's talk about different flavors of networked DICOM.
 | DICOM over TLS | 2762 |
 | DICOMweb | 80, 443 |
 
-DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." No Nmap NSE scripts exist for DICOMweb yet; it's out of scope for this post, but flagged as open tooling work.
+DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." No Nmap NSE scripts exist for DICOMweb yet; it's out of scope for this post, but has potential for Nmap support.
 
 ### DIMSE Services
 

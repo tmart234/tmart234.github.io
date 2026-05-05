@@ -6,7 +6,7 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post gives you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover my Nmap DICOM PR on fingerprinting DICOM systems, and touch briefly on my Scapy DICOM PR.
+Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. So this post gives you some basic protocol fluency, review overall network attack surface with existing Nmap DICOM support, cover two Nmap DICOM PRs — vendor/version fingerprinting and capability enumeration, and touch briefly on my Scapy DICOM PR.
 
 First **read the title.** This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}). So if you get the urge to "you forgot about", please read that article first.
 
@@ -77,7 +77,7 @@ Whatever the envelope, the inner DIMSE is still gated by the same Called AE Titl
 
 ## What Nmap Already Does for DICOM
 
-With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts, both Paulino Calderon's 2019 work [[1]](#references): `dicom-ping` (discovery) and `dicom-brute` (AE Title brute-force), riding the `dicom` NSE library he also wrote. My PRs build on that surface — fingerprinting reads bytes that already come back in the AC; the `dicom-ping` loose ends are a separate diff.
+With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts, both Paulino Calderon's 2019 work [[1]](#references): `dicom-ping` (discovery) and `dicom-brute` (AE Title brute-force), riding the `dicom` NSE library he also wrote. My PRs build on that surface: fingerprinting reads bytes that already come back in the AC, and capability enumeration proposes a richer Presentation Context list to map what the SCP will accept. The `dicom-ping` loose ends are a separate diff.
 
 ### 1. Port Scanning
 
@@ -157,7 +157,7 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 
 Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 
-The AC tells you who built the stack, the RJ tells you which gate you tripped on.
+The AC tells you who built the stack, the RJ tells you which gate you tripped on. Once you're past both gates, `dicom-enum` tells you what the stack will actually speak.
 
 ## Adding Vendor & Version Fingerprinting
 
@@ -192,7 +192,41 @@ The PR handles this by doing table lookups on **both** fields independently and 
 - If `0x52` and `0x55` disagree, that's a useful signal: an OEM customized the stack, and you should look up the OID to find who.
 - If both fields point at the same open-source stack, the manufacturer probably never registered their own OID.
 
-### Beyond Nmap (Scapy)
+## Capability Enumeration (dicom-enum)
+
+`dicom-ping` says the box is up. `dicom-brute` says which AET works. Neither tells you what the box does, what SOP classes it'll accept, or where it's been misconfigured. [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse) turns one A-ASSOCIATE into a capability map.
+
+The lever is the Presentation Context list. `dicom-ping` proposes one PC (Verification, Implicit VR LE) and reads the AC. `dicom-enum` proposes ~30 PCs in a single RQ: Verification, the common Storage SOP classes (CT, MR, US, CR, DX, mammo, X-ray angio, encapsulated PDF, structured reports, presentation states), Modality Worklist, Patient/Study Root Q/R FIND/MOVE/GET, Storage Commitment, MPPS, Basic Grayscale Print. Storage classes get the full transfer-syntax matrix; command classes get Implicit/Explicit VR LE.
+
+The AC returns a per-PC result code per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/part08.html): accepted, user-rejection, abstract-syntax-not-supported, transfer-syntaxes-not-supported, no-reason. That map is the SCP's contract: what it accepts is what it'll process on the next C-STORE, C-FIND, or C-MOVE.
+
+```
+| dicom-enum:
+|   association: accepted (max_pdu=16384, vendor=Orthanc 1.11.0)
+|   service_classes:
+|     QR-Patient-Root
+|     QR-Study-Root
+|     Storage
+|     Verification
+|   inferred_device_class: Archive front-end
+|   results:
+|     accepted:
+|       count: 15
+|       items:
+|         CT Image Storage - Explicit VR Little Endian
+|         MR Image Storage - JPEG 2000 Image Compression (Lossless Only)
+|         Encapsulated PDF Storage - Explicit VR Little Endian
+|     abstract-syntax-not-supported:
+|       count: 10
+|       items:
+|         Modality Worklist Information Model - FIND
+```
+
+**Device class from the accepted set.** Worklist FIND with no storage is a RIS gateway. Storage + Q/R + Storage Commitment with no Worklist is an archive front-end. Storage only is a modality posting to its uplink. `dicom-enum` calls this `inferred_device_class`. The taxonomy is practitioner consensus, not normative DICOM, and it's the right altitude for threat modeling: "PACS" is too coarse, "Orthanc 1.11.0" is too narrow.
+
+**SOP-class scope.** The Storage UID isn't one thing. It's a family with a separate UID for every kind of object the standard knows how to carry: `1.2.840.10008.5.1.4.1.1.2` for CT, `...1.1.4` for MR, `...1.1.104.1` for an encapsulated PDF, plus structured reports, RT plans, presentation states. A Storage SCP accepting PDFs from a CT modality is misconfigured on both ends, and the accepted-items list shows it on one screen. The set of accepted UIDs is also the menu of file structures the parser will see on the next C-STORE. That's where [102]({% post_url 2026-04-16-dicom-file-format-security %}) picks up.
+
+## Beyond Nmap (Scapy)
 
 The A-ASSOCIATE-RQ sent by the client carries the same `0x50` User Information structure, optionally including the User Identity sub-item covered earlier. Even after a successful association, some implementations scope DIMSE-level authorization by AE Title or User Identity credentials, so "associated" doesn't always mean "full access."
 

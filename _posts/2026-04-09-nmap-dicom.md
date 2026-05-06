@@ -180,9 +180,7 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 
 {% include associate_ac_pdu.html %}
 
-Each Item Type `0x21` is the server's commitment to one **Presentation Context** from the RQ's proposals: a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That per-encoding negotiation is itself an attack primitive: *how* you can ask, beyond the two auth gates above. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder. Servers that accept obsolete or rare syntaxes by default hand you the lever for free.
-
-The A-ASSOCIATE-AC packet also has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
+The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
 
 - **`0x52` Implementation Class UID** — a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM).
 - **`0x55` Implementation Version Name** — a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). Conforming implementations can omit it, and the PR handles that case.
@@ -223,6 +221,8 @@ The 0x55 path uses a similar table keyed on substrings of the version string. Su
 ## Capability Enumeration (dicom-enum)
 
 Knowing the box is Orthanc 1.11.0 isn't enough. The next questions are: what role does it play on the network (image archive, work-order server, scanner, print gateway), and which kinds of objects will it accept from a peer? Both answers are sitting in the A-ASSOCIATE-AC if you ask the right thing. So I wrote [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse), a third NSE script that proposes about thirty Presentation Contexts in one A-ASSOCIATE-RQ and parses what came back per context.
+
+Each Item Type `0x21` in the AC is the server's commitment to one **Presentation Context** from the RQ's proposals: a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That per-encoding negotiation is itself an attack primitive: *how* you can ask, beyond the two auth gates above. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder. Servers that accept obsolete or rare syntaxes by default hand you the lever for free.
 
 The AC returns one of five result codes per Presentation Context per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/part08.html): accepted, user-rejection, abstract-syntax-not-supported, transfer-syntaxes-not-supported, no-reason. The script buckets them. What lands in `accepted` is what the server will process on the next DIMSE op.
 

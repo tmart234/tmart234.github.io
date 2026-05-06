@@ -45,8 +45,8 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
-| Called AE Title (fixed header) | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
-| Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask*: which operation classes (Storage, Q/R, MWL (Modality Worklist), MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
+| Called AE Title | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
+| Abstract Syntax / SOP Class UID | *What you can ask*: which operation classes (Storage, Q/R, MWL (Modality Worklist), MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
 The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 

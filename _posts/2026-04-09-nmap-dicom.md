@@ -227,11 +227,9 @@ The 0x55 path uses a similar table keyed on substrings of the version string. Su
 
 ## Capability Enumeration (dicom-enum)
 
-Knowing the box is Orthanc 1.11.0 isn't enough. The next questions are: what role does it play on the network (image archive, work-order server, scanner, print gateway), and which kinds of objects will it accept from a peer? Both answers are sitting in the A-ASSOCIATE-AC if you ask the right thing. So I wrote [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse), a third NSE script that proposes about thirty Presentation Contexts in one A-ASSOCIATE-RQ and parses what came back per context.
+Knowing the box is Orthanc 1.11.0 isn't enough. The next questions: what role does it play — archive, work-order server, scanner, print gateway — and which objects will it accept? Both answers sit in the A-ASSOCIATE-AC if you propose enough Presentation Contexts to draw them out. So I wrote [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse), a third NSE script that proposes about thirty contexts in one A-ASSOCIATE-RQ and buckets the responses.
 
-Each Item Type `0x21` in the AC is the server's commitment to one **Presentation Context** from the RQ's proposals: a Presentation Context ID paired with exactly one Accepted Transfer Syntax (sub-item `0x40`) for a given Abstract Syntax (SOP Class UID: Verification, Storage, Query/Retrieve, Modality Worklist). The accepted IDs gate every DIMSE op that follows: propose Storage and get it accepted, you can C-STORE; don't propose it, or get it rejected, and you can't. That per-encoding negotiation is itself an attack primitive: *how* you can ask, beyond the two auth gates above. Downgrade to Implicit VR to strip type information, force uncompressed to dodge codec paths, or pick a rare JPEG variant to steer the peer onto its dustiest decoder. Servers that accept obsolete or rare syntaxes by default hand you the lever for free.
-
-The AC returns one of five result codes per Presentation Context per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/part08.html): accepted, user-rejection, abstract-syntax-not-supported, transfer-syntaxes-not-supported, no-reason. The script buckets them. What lands in `accepted` is what the server will process on the next DIMSE op.
+Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/part08.html), the AC returns one of five result codes per Presentation Context: accepted, user-rejection, abstract-syntax-not-supported, transfer-syntaxes-not-supported, no-reason. What lands in `accepted` is what the server will process on the next DIMSE op.
 
 ```
 | dicom-enum:
@@ -249,23 +247,19 @@ The AC returns one of five result codes per Presentation Context per [PS3.8 §9.
 |         CT Image Storage - Explicit VR Little Endian
 |         MR Image Storage - JPEG 2000 Image Compression (Lossless Only)
 |         Encapsulated PDF Storage - Explicit VR Little Endian
-|     abstract-syntax-not-supported:
-|       count: 10
-|       items:
-|         Modality Worklist Information Model - FIND
 ```
 
-Each line in `accepted` pairs an object type with an encoding. The DICOM standard defines a separate Storage class for every kind of object it carries: CT images, MRs, ultrasounds, mammograms, encapsulated PDFs, structured reports, RT plans, presentation states, and several dozen more. A properly scoped SCP only accepts the types it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth noting. The accepted list is also the menu of file structures the server's parser will receive on the next C-STORE, which is the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
+Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries — CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the menu of file structures the parser will receive on the next C-STORE — the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
-The `inferred_device_class` line is the other half. The mapping isn't anything the spec defines (it's practitioner shorthand), but it tracks real roles in a hospital. Three patterns show up most:
+`inferred_device_class` isn't spec-defined; it's practitioner shorthand for three real roles:
 
-- **The work-order box.** Serves Modality Worklist, won't accept Storage. This is the radiology information system or its DICOM gateway: the box that tells scanners which studies they're scheduled to acquire today, with patient names, MRNs, and scheduled procedure codes attached. No images live here.
-- **The archive.** Accepts Storage from upstream, serves Query/Retrieve to downstream readers, doesn't speak Worklist. PACS, VNA, research archive. The studies and their long-term retention live here.
-- **The scanner.** Only proposes Storage as a client, no Query/Retrieve, no Worklist. The CT, MR, or ultrasound itself, pushing acquired studies to whatever's configured to receive them.
+- **Work-order box.** Serves Modality Worklist, refuses Storage. RIS or its DICOM gateway — demographics and scheduling, no pixels.
+- **Archive.** Accepts Storage upstream, serves Q/R downstream, no Worklist. PACS, VNA. Pixels and a retention policy that probably says "forever."
+- **Scanner.** Proposes Storage as a client, no Q/R, no Worklist. The CT, MR, or ultrasound itself — usually running the oldest, most loosely-patched software on the network.
 
-Which one you're looking at changes the threat model and the next recon move. The work-order box has demographics and scheduling but no pixels; the archive has the pixels and a retention policy that probably says "forever"; the scanner has neither but is where the acquisition itself happens (and is usually the box running the oldest, most loosely-patched software on the network). "PACS" by itself doesn't get you any of that.
+Which one you're looking at changes the threat model and the next move. "PACS" by itself gets you none of that.
 
-`dicom-enum` is in the `discovery` and `safe` categories, not `brute` and not `default`. PACS networks tend to be running brittle modalities and vendor support contracts that get unhappy about unsolicited associations, and a default-category script proposing thirty Presentation Contexts at every open port would land in the wrong inbox.
+`dicom-enum` is tagged `discovery` and `safe`, not `brute` and not `default`. Modalities are brittle, vendor support contracts get unhappy about unsolicited associations, and a default-category script proposing thirty contexts at every open port would land in the wrong inbox.
 
 The recon flow, start to finish:
 

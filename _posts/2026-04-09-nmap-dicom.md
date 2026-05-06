@@ -99,7 +99,7 @@ Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 
 nmap -sC -p 104 <target>
 ```
 
-With Nmap's default scripts enabled (`-sC`), the `dicom-ping` script runs automatically. `-A` will also pull it in, but `-A` is `-sC` plus OS detection, version detection, and traceroute, which could be more than you want to throw at a hospital network. For DICOM recon specifically, starting at the targeted `-sC -p 104` is best. Either way, here's the thing: this "ping" is not a real DICOM ping because it never sends a C-ECHO. It only does the first half, the A-ASSOCIATE request/response handshake. That's it.
+With Nmap's default scripts enabled (`-sC`), the `dicom-ping` script runs automatically. `-A` will also pull it in, but `-A` is `-sC` plus OS detection, version detection, and traceroute, which could be more than you want to throw at a hospital network. For DICOM recon specifically, starting at the targeted `-sC -p 104` is best.
 
 A typical run looks like this:
 
@@ -125,7 +125,7 @@ sequenceDiagram
     participant S as Server (PACS)
 
     rect rgba(180, 180, 100, 0.25)
-    Note over C,S: Ping Phase: Association only
+    Note over C,S: Ping Phase 1: Association
     C->>S: A-ASSOCIATE-RQ (0x01)<br/>Calling AE: "NMAP_DICOM_PING"
     alt Server accepts
         S-->>C: A-ASSOCIATE-AC (0x02)<br/>e.g. "Implementation: DCMTK 3.6.9"
@@ -134,6 +134,13 @@ sequenceDiagram
     end
     Note over C: Parse Vendor/Version<br/>Check AE Title<br/>Drop Connection
     C-xS: [Connection Terminated]
+    end
+
+    rect rgba(200, 80, 80, 0.25)
+    Note over C,S: SKIPPED: Ping Phase 2 (C-ECHO)
+    C--xS: C-ECHO-RQ (Data 0x04)
+    S--xC: C-ECHO-RSP (Data 0x04)
+    C--xS: A-RELEASE-RQ (0x05)
     end
 </div>
 {% endraw %}

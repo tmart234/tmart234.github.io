@@ -22,7 +22,7 @@ DICOM nodes act as clients (SCU) and servers (SCP). Two of them set up an A-ASSO
 | DICOM over TLS | 2762 |
 | DICOMweb | 80, 443 |
 
-DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." No Nmap NSE scripts exist for DICOMweb yet; it's out of scope for this post, but has potential for Nmap support.
+DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." DICOMweb is out of scope for this post; the lack of Nmap coverage is in the gaps list at the end.
 
 ### DIMSE Services
 
@@ -45,10 +45,12 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
-| Called AE Title (fixed header) | *Whether you can ask*: is the association accepted at all | Per-peer | `ANY-SCP` wildcard accepts any caller |
+| Called AE Title (fixed header) | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID (item 0x20 proposed → 0x21 accepted) | *What you can ask*: which operation classes (Storage, Q/R, MWL (Modality Worklist), MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
 The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+
+One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET — `PR-ct5_SCU` — as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 
 For network authentication, DICOM supports two mechanisms:
 
@@ -274,6 +276,13 @@ nmap --script dicom-enum \
 
 Nmap tells you who you're talking to; [my Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) is what you reach for next. Same A-ASSOCIATE on the wire, but you can craft anything: C-FIND, malformed image PDUs against a parser, or username/passcode brute force via the User Identity sub-item with the SecLists medical-devices wordlist. Workflow in a future post.
 
+## Gaps for Future Work
+
+- **No Spicy DICOM parser.** A Spicy grammar would compile to both Zeek and Suricata, so a hospital SOC could get DICOM-aware logging and inline detection from one parser. Nobody's written it.
+- **No Metasploit modules.** No `auxiliary/scanner/dicom/*`, no exploits for the published CVEs in DCMTK or the major PACS stacks. Pentests reach for Python one-offs every time.
+- **No DICOMweb NSE.** The HTTPS-fronted variant — WADO/QIDO/STOW, what every cloud imaging API actually speaks — has no Nmap coverage at all.
+- **No public AET wordlist worth the name.** SecLists has a medical-devices file; it's a starting point, not a finished asset. Vendor-specific naming patterns (`MR_ER_3`, `PR-ct5_SCU`, `<MFG>_<MODALITY>_<ROOM>`) deserve their own corpus.
+
 Somewhere right now a radiologist is opening a study that arrived over plaintext DIMSE, on a workstation whose AE Title is the brand name in all caps. The protocol is doing exactly what it was designed to do in 1993. Scapy next.
 
 ## References
@@ -281,3 +290,4 @@ Somewhere right now a radiologist is opening a study that arrived over plaintext
 1. Calderon, P. (2019). *New NSE library for DICOM and scripts `dicom-ping` and `dicom-brute`.* nmap-dev mailing list announcement: [seclists.org/nmap-dev/2019/q3/6](https://seclists.org/nmap-dev/2019/q3/6). Script docs: [`dicom-ping`](https://nmap.org/nsedoc/scripts/dicom-ping.html), [`dicom-brute`](https://nmap.org/nsedoc/scripts/dicom-brute.html).
 2. Nmap PR adding DICOM vendor/version fingerprinting off the A-ASSOCIATE-AC (link TBD pending merge or reviewable state).
 3. OFFIS DCMTK 3.6.9 release announcement (Dec 10, 2024): [forum.dcmtk.org/viewtopic.php?t=5429](https://forum.dcmtk.org/viewtopic.php?t=5429).
+4. Shepard, S. J. (2004). *DICOM Basics for Radiographic and Fluoroscopic Systems.* 2004 AAPM Summer School: [aapm.org/meetings/04ss/documents/DICOMBasics.pdf](https://www.aapm.org/meetings/04ss/documents/DICOMBasics.pdf).

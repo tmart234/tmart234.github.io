@@ -276,14 +276,14 @@ nmap --script dicom-enum \
 
 Nmap tells you who you're talking to; [my Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) is what you reach for next. Same A-ASSOCIATE on the wire, but you can craft anything: C-FIND, malformed image PDUs against a parser, or username/passcode brute force via the User Identity sub-item with the SecLists medical-devices wordlist. Workflow in a future post.
 
-Somewhere right now a radiologist is opening a study that arrived over plaintext DIMSE, on a workstation whose AE Title is the brand name in all caps. The protocol is doing exactly what it was designed to do in 1993. Scapy next.
-
 ## Gaps for Future Work
 
 - **No Spicy DICOM parser.** A Spicy grammar would compile to both Zeek and Suricata, so a hospital SOC could get DICOM-aware logging and inline detection from one parser. Nobody's written it.
 - **No Metasploit modules.** No `auxiliary/scanner/dicom/*`, no exploits for the published CVEs in DCMTK or the major PACS stacks. Pentests reach for Python one-offs every time.
 - **No DICOMweb NSE.** The HTTPS-fronted variant — WADO/QIDO/STOW, what every cloud imaging API actually speaks — has no Nmap coverage at all.
 - **No public AET wordlist worth the name.** SecLists has a medical-devices file; it's a starting point, not a finished asset. Vendor-specific naming patterns (`MR_ER_3`, `PR-ct5_SCU`, `<MFG>_<MODALITY>_<ROOM>`) deserve their own corpus.
+
+Somewhere right now a radiologist is opening a study that arrived over plaintext DIMSE, on a workstation whose AE Title is the brand name in all caps. The protocol is doing exactly what it was designed to do in 1993. Scapy next.
 
 ## References
 

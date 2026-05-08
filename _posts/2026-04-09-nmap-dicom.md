@@ -263,7 +263,7 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 
 Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries — CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the menu of file structures the parser will receive on the next C-STORE — the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
-`service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here — your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that contradicts the deployment story — Mammography on a CT-only console — is the same tell as the encapsulated-PDF one above.
+`service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here: your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that doesn't match the deployment story flags a misconfiguration.
 
 `inferred_device_class` isn't spec-defined; it's practitioner shorthand for five real roles:
 
@@ -272,8 +272,6 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 - **Modality.** The CT, the MR, the ultrasound. Accepts barely more than Verification and runs the oldest, least-patched code on the network.
 - **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
 - **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
-
-Which one you're looking at changes the threat model and the next move. "PACS" by itself gets you none of that.
 
 `dicom-enum` is tagged `discovery` and `safe`, not `brute` and not `default`. Modalities are brittle, vendor support contracts get unhappy about unsolicited associations, and a default-category script proposing thirty contexts at every open port would land in the wrong inbox.
 

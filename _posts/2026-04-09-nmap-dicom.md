@@ -241,6 +241,18 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 |     QR-Study-Root
 |     Storage
 |     Verification
+|   service_commands:
+|     C-ECHO
+|     C-FIND
+|     C-GET
+|     C-MOVE
+|     C-STORE
+|   modalities:
+|     CT
+|     MRI
+|     PET
+|     PET-CT
+|     Ultrasound
 |   inferred_device_class: Archive front-end
 |   results:
 |     accepted:
@@ -252,6 +264,8 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 ```
 
 Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries — CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the menu of file structures the parser will receive on the next C-STORE — the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
+
+`service_commands` and `modalities` are rollups of that same accepted list. Commands are the DIMSE verbs the SCP will answer — C-ECHO from Verification, C-STORE from Storage, C-FIND/MOVE/GET from Q/R and Worklist. Modalities are the imaging types behind the accepted Storage classes; `PET-CT` only appears when both PET and CT do, which is how you tell a hybrid scanner from two unrelated boxes.
 
 `inferred_device_class` isn't spec-defined; it's practitioner shorthand for three real roles:
 

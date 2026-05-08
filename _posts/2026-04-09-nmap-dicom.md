@@ -263,15 +263,15 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 
 Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries — CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the menu of file structures the parser will receive on the next C-STORE — the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
-`service_commands` and `modalities` are rollups of the accepted list, and each one maps to attack surface. Commands are the DIMSE verbs the SCP will answer: C-STORE is a write primitive (parser fuzzing target, polyglot delivery), C-FIND reads PHI metadata over the wire, C-MOVE and C-GET pull bulk image data. Modalities are the imaging types implied by the accepted Storage classes; a list that doesn't match the deployment narrative — Mammography on a CT-only box, Nuclear Medicine on something that's supposed to be a worklist server — is the same misconfiguration signal as the encapsulated-PDF case above.
+`service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here — your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that contradicts the deployment story — Mammography on a CT-only console — is the same tell as the encapsulated-PDF one above.
 
 `inferred_device_class` isn't spec-defined; it's practitioner shorthand for five real roles:
 
-- **PACS/VNA.** Accepts Storage, serves Q/R, plus workflow extras like Storage Commitment and MPPS. The enterprise system of record — pixels and a retention policy that says "forever."
-- **Archive front-end.** Storage and Q/R without the workflow extras. A department PACS, a research archive, or a Q/R cache in front of the real VNA.
-- **Modality.** The CT, MR, or ultrasound itself. Accepts little beyond Verification — usually running the oldest, most loosely-patched software on the network.
-- **RIS gateway.** Serves Modality Worklist, refuses Storage. Demographics and scheduling, no pixels.
-- **Print server.** Accepts Print Management for hardcopy or film output. A legacy footprint, and one that should not be reachable from outside the modality VLAN.
+- **PACS/VNA.** The vault. Storage in, Q/R out, Storage Commitment and MPPS along for the ride. Whatever lands here was meant to stay forever.
+- **Archive front-end.** Storage and Q/R, no workflow plumbing. A department PACS, a research archive, a Q/R cache fronting the real VNA — built to hold copies, not the original.
+- **Modality.** The CT, the MR, the ultrasound. Accepts barely more than Verification and runs the oldest, least-patched code on the network.
+- **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
+- **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
 
 Which one you're looking at changes the threat model and the next move. "PACS" by itself gets you none of that.
 

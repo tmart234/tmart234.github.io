@@ -265,11 +265,12 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 
 `service_commands` and `modalities` are rollups of the accepted list. Commands are the DIMSE verbs the SCP will answer; modalities are the imaging types implied by its accepted Storage classes.
 
-`inferred_device_class` isn't spec-defined; it's practitioner shorthand for three real roles:
+`inferred_device_class` isn't spec-defined; it's practitioner shorthand for four real roles:
 
 - **Work-order box.** Serves Modality Worklist, refuses Storage. RIS or its DICOM gateway — demographics and scheduling, no pixels.
 - **Archive.** Accepts Storage upstream, serves Q/R downstream, no Worklist. PACS, VNA. Pixels and a retention policy that probably says "forever."
 - **Scanner.** Proposes Storage as a client, no Q/R, no Worklist. The CT, MR, or ultrasound itself — usually running the oldest, most loosely-patched software on the network.
+- **Print server.** Accepts Print Management for hardcopy or film output. Usually a legacy footprint, and one that should not be reachable from outside the modality VLAN.
 
 Which one you're looking at changes the threat model and the next move. "PACS" by itself gets you none of that.
 

@@ -12,7 +12,7 @@ This is network protocol only. DICOM file security stuff is in the [102]({% post
 
 ## The Wire: Ports, Services, and Auth
 
-DICOM nodes act as clients (SCU) and servers (SCP). Two of them set up an A-ASSOCIATE — a TCP-level handshake that negotiates which operations the session will allow — before any DIMSE message moves. Everything in this post happens in or after that handshake.
+DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE — a TCP-level handshake that negotiates which operations the session will allow — before any DIMSE (DICOM Message Service Element) message moves. Everything in this post happens in or after that handshake.
 
 ### Flavors of DICOM
 
@@ -26,7 +26,7 @@ DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: be
 
 ### DIMSE Services
 
-After association, DIMSE (DICOM Message Service Element) splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state: MPPS (Modality Performed Procedure Step) updates, storage-commitment results, print jobs.
+After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state: MPPS (Modality Performed Procedure Step) updates, storage-commitment results, print jobs.
 
 N-services get far less scrutiny. Once a peer is associated there's no per-verb auth, so an `N-SET` that flips an MPPS to COMPLETED or a forged storage-commitment `N-EVENT-REPORT` lands with the same trust as a `C-STORE`. No pixels touched, no hash mismatch, just corrupted workflow. The ones you need to know:
 
@@ -46,9 +46,9 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
 | Called AE Title | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
-| Abstract Syntax / SOP Class UID | *What you can ask*: which operation classes (Storage, Q/R, MWL (Modality Worklist), MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
+| Abstract Syntax / SOP Class UID | *What you can ask*: which operation classes the association can use (Storage, Query/Retrieve, Modality Worklist, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
-The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE makes this consequential. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE turns this into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET — `PR-ct5_SCU` — as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 
@@ -62,7 +62,9 @@ For network authentication, DICOM supports two mechanisms:
     - SAML assertion
     - JSON Web Token (JWT)
 
-The catch: **there's no Reason code unique to credential failure**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity with Result = `1` (rejected-permanent), Source = `2` (service-provider, ACSE (Association Control Service Element)), Reason = `1` (no-reason-given). That's `1/2/1`. The Source byte separates it from an AE Title miss, which comes back as Source = `1` (service-user): either `1/1/7` (explicit) or the flattened `1/1/1`. Read Source first. On stacks that flatten everything to `1/1/1`, the only tell left is whether your RQ carried a `0x58` sub-item.
+### User Identity Negotiation
+
+The catch: **there's no Reason code unique to credential failure**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity with Result = `1` (rejected-permanent), Source = `2` (service-provider, ACSE (Association Control Service Element)), Reason = `1` (no-reason-given). That's `1/2/1`. The Source byte separates it from an AE Title miss, which comes back as Source = `1` (service-user): either `1/1/7` (explicit) or the flattened `1/1/1`. Read Source first. On stacks that flatten everything to `1/1/1`, the only tell left is whether your RQ carried a `0x58` sub-item. PS3.7 should define a distinct Reason for credential failure. It doesn't, which is why every stack flattens differently.
 
 None of this is authentication. It's a guest list with no bouncer.
 
@@ -85,7 +87,7 @@ When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every mo
 
 ## What Nmap Already Does for DICOM
 
-With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts, both Paulino Calderon's 2019 work [[1]](#references): `dicom-ping` (discovery) and `dicom-brute` (AE Title brute-force), riding the `dicom` NSE library he also wrote. My PRs build on that surface: fingerprinting reads bytes that already come back in the AC, and capability enumeration proposes a richer Presentation Context list to map what the SCP (Service Class Provider) will accept. The `dicom-ping` loose ends are a separate diff.
+With the auth model in hand, here's what Nmap already ships to probe it. Two DICOM-aware NSE scripts, both Paulino Calderon's 2019 work [[1]](#references): `dicom-ping` (discovery) and `dicom-brute` (AE Title brute-force), riding the `dicom` NSE library he also wrote. My PRs build on that surface: fingerprinting reads bytes that already come back in the AC, and capability enumeration proposes a richer Presentation Context list to map what the SCP will accept. The `dicom-ping` loose ends are a separate diff.
 
 ### 1. Port Scanning
 
@@ -119,8 +121,7 @@ A successful association (AE accepted) or even a rejected (A-ASSOCIATE-RJ) one i
 
 Since everything Nmap does for DICOM (discovery, "insecure AE Title" detection, brute force, and the vendor/version fingerprinting I'll get to below) rides on this same A-ASSOCIATE exchange, it's worth pausing on the actual wire flow before going further.
 
-{% raw %}
-<div class="mermaid">
+```mermaid
 sequenceDiagram
     autonumber
     participant C as Client (Nmap)
@@ -144,8 +145,7 @@ sequenceDiagram
     S--xC: C-ECHO-RSP (Data 0x04)
     C--xS: A-RELEASE-RQ (0x05)
     end
-</div>
-{% endraw %}
+```
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
@@ -267,7 +267,7 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 
 `inferred_device_class` isn't spec-defined; it's practitioner shorthand for five real roles:
 
-- **PACS/VNA.** The vault. Storage in, Q/R out, Storage Commitment and MPPS along for the ride. Whatever lands here was meant to stay forever.
+- **PACS/VNA (Vendor Neutral Archive).** The vault. Storage in, Q/R (Query/Retrieve) out, Storage Commitment and MPPS along for the ride. Whatever lands here was meant to stay forever.
 - **Archive front-end.** Storage and Q/R, no workflow plumbing. A department PACS, a research archive, a Q/R cache fronting the real VNA — built to hold copies, not the original.
 - **Modality.** The CT, the MR, the ultrasound. Accepts barely more than Verification and runs the oldest, least-patched code on the network.
 - **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
@@ -297,7 +297,7 @@ Nmap tells you who you're talking to; [my Scapy DICOM contrib module](https://gi
 - **No DICOMweb NSE.** The HTTPS-fronted variant — WADO/QIDO/STOW, what every cloud imaging API actually speaks — has no Nmap coverage at all.
 - **No public AET wordlist worth the name.** SecLists has a medical-devices file; it's a starting point, not a finished asset. Vendor-specific naming patterns (`MR_ER_3`, `PR-ct5_SCU`, `<MFG>_<MODALITY>_<ROOM>`) deserve their own corpus.
 
-Somewhere right now a radiologist is opening a study that arrived over plaintext DIMSE, on a workstation whose AE Title is the brand name in all caps. The protocol is doing exactly what it was designed to do in 1993. Scapy next.
+Two choices for hospitals running plaintext DIMSE on flat networks: segment it or wrap it. Doing neither is the third choice, and the one most are making. Scapy next.
 
 ## References
 

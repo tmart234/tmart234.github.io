@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "DICOM Security 102: Diving into Files"
+title: "DICOM Security 102: Inside the File Format"
 description: "DICOM Security 102: file format internals — the 128-byte preamble, TLV elements, and why integrity is opt-in nobody opts into."
 tags: [dicom, medical-devices]
 last_modified_at: 2026-04-16

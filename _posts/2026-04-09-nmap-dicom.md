@@ -66,7 +66,7 @@ For network authentication, DICOM supports two mechanisms:
 
 The catch: **there's no Reason code unique to credential failure**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity with Result = `1` (rejected-permanent), Source = `2` (service-provider, ACSE (Association Control Service Element)), Reason = `1` (no-reason-given). That's `1/2/1`. The Source byte separates it from an AE Title miss, which comes back as Source = `1` (service-user): either `1/1/7` (explicit) or the flattened `1/1/1`. Read Source first. On stacks that flatten everything to `1/1/1`, the only tell left is whether your RQ carried a `0x58` sub-item. PS3.7 should define a distinct Reason for credential failure. It doesn't, which is why every stack flattens differently.
 
-None of the listed mechanisms are required by the protocol, and on a stack that doesn't request a `0x58` sub-item, the server has no user identity to check against in the first place. It's a guest list with no bouncer.
+None of this is authentication. It's a guest list with no bouncer.
 
 ### TLS: Specified, Inconsistently Deployed
 
@@ -187,31 +187,7 @@ Who knows when the PR gets merged, so I'm writing about it now.
 
 After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script already exchanges, I noticed something useful: the A-ASSOCIATE-AC (accept) response contains reliable vendor and version information just sitting there. No extra packets.
 
-```text
-A-ASSOCIATE-AC PDU
-==================
-
-Fixed Header (74 bytes)
-    PDU Type (0x02) | Version (0x01) | Reserved (32 bytes)
-    Called AE Title  (16 bytes) | "ANY-SCP         "   -- if accepted, treat as promiscuous
-    Calling AE Title (16 bytes) | "NMAP_DICOM      "   -- scanner identifier, space-padded
-
-Item Type = 0x10
-    Application Context UID (variable length)
-
-Item Type = 0x21  (Presentation Context AC)
-    Presentation Context ID
-    Accepted Transfer Syntax  (sub-item 0x40)
-
-Item Type = 0x50  (User Information Payload -- nested TLVs)
-    Type 0x51 | Max PDU Length (length: 4)
-    Type 0x52 | Implementation Class UID
-              | "1.2.276.0.7230010.3.0.3.6.9"   (matches DCMTK)
-    Type 0x55 | Implementation Version Name
-              | "OFFIS_DCMTK_369"                (parses to 3.6.9)
-    Type 0x59 | User Identity (server response, optional)
-              | Kerberos ticket, SAML, or JWT (zero-length for types 1 & 2)
-```
+{% include associate_ac_pdu.html %}
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
 

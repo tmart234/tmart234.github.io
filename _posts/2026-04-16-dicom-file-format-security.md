@@ -54,6 +54,8 @@ The [101]({% post_url 2026-04-09-nmap-dicom %}) flagged that some vendors bolt D
 
 ### The Preamble Polyglot
 
+A polyglot here is a single file that simultaneously parses as two different formats — valid in both, weaponized in one.
+
 Remember those 128 undefined bytes? In 2019, security researcher Markel Picado Ortiz (d00rt) at Cylera Labs demonstrated that you can put a valid PE (Windows executable) header in the preamble. The DOS header and stub fit in 128 bytes. The stub points to a PE payload stored further in the file inside a DICOM data element. The result is a single file that is simultaneously a valid `.dcm` and a valid `.exe`. Open it in a DICOM viewer: you see a medical image. Run it from `cmd.exe` and it executes as a Windows binary. The image stays clinically valid and viewable. This was assigned [CVE-2019-11687](https://www.cvedetails.com/cve/CVE-2019-11687/) (CVSS 7.8).
 
 {% include dicom_pe_polyglot.html %}

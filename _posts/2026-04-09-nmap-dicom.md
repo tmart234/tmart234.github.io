@@ -37,7 +37,7 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 | `C-ECHO` | Protocol ping. Sent over an established A-ASSOCIATE. |
 | `C-STORE` | Upload DICOM objects to the peer. Entry point for file-format fuzzing. DICOMweb's `STOW-RS` is the modern equivalent ingress, inheriting the REST-API failure modes from above. |
 | `C-FIND` | Query: patient lists, studies, series, Modality Worklist. PHI exposure or authorization-scoping check. |
-| `C-MOVE` | Client names a destination AE Title (Application Entity Title); server opens a new A-ASSOCIATE there and C-STOREs the objects to it. SSRF-adjacent pivot primitive. |
+| `C-MOVE` | Client names a destination AE Title (Application Entity Title); server opens a new A-ASSOCIATE there and C-STOREs the objects to it. SSRF (Server-Side Request Forgery)-adjacent pivot primitive. |
 | `C-GET` | Server returns objects over the current association: no second outbound connection, so not a pivot. Try when `C-MOVE` is blocked. |
 | **N-services** (`N-CREATE`, `N-SET`, `N-ACTION`, `N-EVENT-REPORT`, `N-GET`) | Workflow/event verbs: MPPS state, Storage Commitment receipts, Print. No pixel data, so audit rules and threat models routinely skip them. |
 
@@ -74,7 +74,7 @@ None of this is authentication. It's a guest list with no bouncer.
 
 [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines TLS profiles with mutual auth. The spec is fine. The deployments are not.
 
-There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of deployments run TLS on 104 or 11112 because the vendor's config UI has one "DICOM port" field and a "use TLS" checkbox.
+There's no STARTTLS-style upgrade (an in-band "switch this plaintext connection to TLS now" command, like SMTP's) in A-ASSOCIATE, and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of deployments run TLS on 104 or 11112 because the vendor's config UI has one "DICOM port" field and a "use TLS" checkbox.
 
 So integrators bolt encryption on at layers they understand. Four patterns, only the last is actual DICOM TLS:
 
@@ -193,7 +193,7 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
 
-- **`0x52` Implementation Class UID** — a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM).
+- **`0x52` Implementation Class UID** — a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM — Original Equipment Manufacturer, the device vendor).
 - **`0x55` Implementation Version Name** — a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). Conforming implementations can omit it, and the PR handles that case.
 
 #### Why You Need to Look Up Both
@@ -230,6 +230,8 @@ The 0x55 path uses a similar table keyed on substrings of the version string. Su
 - If both fields point at the same open-source stack, the manufacturer probably never registered their own OID.
 
 ## Capability Enumeration (dicom-enum)
+
+A Presentation Context is a proposed Abstract Syntax (the operation class, e.g. CT Image Storage) plus Transfer Syntax (the encoding, e.g. Explicit VR Little Endian) pair that the SCP either accepts or rejects.
 
 Knowing the box is Orthanc 1.11.0 isn't enough. The next questions: what role does it play — archive, work-order server, scanner, print gateway — and which objects will it accept? Both answers sit in the A-ASSOCIATE-AC if you propose enough Presentation Contexts to draw them out. So I wrote [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse), a third NSE script that proposes about thirty contexts in one A-ASSOCIATE-RQ and buckets the responses.
 
@@ -270,7 +272,7 @@ Read this output as your working attack surface, not a taxonomy. `service_comman
 - **PACS/VNA (Vendor Neutral Archive).** The vault. Storage in, Q/R (Query/Retrieve) out, Storage Commitment and MPPS along for the ride. Whatever lands here was meant to stay forever.
 - **Archive front-end.** Storage and Q/R, no workflow plumbing. A department PACS, a research archive, a Q/R cache fronting the real VNA — built to hold copies, not the original.
 - **Modality.** The CT, the MR, the ultrasound. Accepts barely more than Verification and runs the oldest, least-patched code on the network.
-- **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
+- **RIS (Radiology Information System) gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
 - **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
 
 Whatever the SCP accepts on `C-STORE` propagates downstream unchecked. Modality → PACS/VNA → AI/ML → viewer, each hop re-parses, none re-authenticates. The capability map is the attack surface every later parser inherits.

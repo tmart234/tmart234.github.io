@@ -12,7 +12,9 @@ This is network protocol only. DICOM file security stuff is in the [102]({% post
 
 ## The Wire: Ports, Services, and Auth
 
-DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or after that handshake.
+DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs): client and server, basically. The same physical box often plays both roles in different sessions. A CT is an SCU when it pushes a study and an SCP when a viewer queries it.
+
+Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or right after that handshake.
 
 ### Flavors of DICOM
 

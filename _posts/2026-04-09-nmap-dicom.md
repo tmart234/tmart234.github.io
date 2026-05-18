@@ -263,11 +263,9 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 |         Encapsulated PDF Storage - Explicit VR Little Endian
 ```
 
-Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries: CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is where a polyglot object (maldicom) can become a long term resident in the archive. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}), and the hospital is the one who pays when the MDM ships a 2026 device parsing with 2016 DCMTK.
+Read this output as your working attack surface, not a taxonomy. `service_commands` is your live verb list: what DIMSE you can actually send to this peer, regardless of what the spec allows. The accepted Storage classes are your image-fuzzing targets. Every entry is an object type the SCP will hand to whatever file-parsing library it linked. The Encapsulated PDF row on a CT-facing endpoint is the canonical tell. Nothing about CT workflow needs PDF parsing, but the SCP will pass a malformed PDF to its library anyway. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}), and the patient on the table is the one who pays when the MDM ships a 2024 device parsing 2018 DCMTK and never re-validates.
 
-`service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here: your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that doesn't match the deployment story flags a misconfiguration.
-
-`inferred_device_class` isn't spec-defined; it's practitioner shorthand for five real roles:
+`modalities` and `inferred_device_class` are the same accepted list sliced for orientation: what this box claims to be and what role it plays. `inferred_device_class` isn't spec-defined; it's practitioner shorthand for five roles:
 
 - **PACS/VNA (Vendor Neutral Archive).** The vault. Storage in, Q/R (Query/Retrieve) out, Storage Commitment and MPPS along for the ride. Whatever lands here was meant to stay forever.
 - **Archive front-end.** Storage and Q/R, no workflow plumbing. A department PACS, a research archive, a Q/R cache fronting the real VNA — built to hold copies, not the original.
@@ -275,7 +273,7 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 - **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
 - **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
 
-These roles aren't standalone boxes; they're a pipeline. Modality → PACS/VNA → AI/ML inference → viewer re-parses the same object at each hop, under independent trust assumptions, and none of them re-authenticate the bytes that arrived. The SCP you fingerprint is just the first hop; whatever it accepts on `C-STORE` propagates downstream unchecked. That's why the capability map matters past recon. It's the surface every later parser inherits.
+Whatever the SCP accepts on `C-STORE` propagates downstream unchecked. Modality → PACS/VNA → AI/ML → viewer, each hop re-parses, none re-authenticates. The capability map is the attack surface every later parser inherits.
 
 `dicom-enum` is tagged `discovery` and `safe`, not `brute` and not `default`. Modalities are brittle, vendor support contracts get unhappy about unsolicited associations, and a default-category script proposing thirty contexts at every open port would land in the wrong inbox.
 

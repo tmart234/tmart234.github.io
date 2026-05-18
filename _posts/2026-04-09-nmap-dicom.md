@@ -6,13 +6,13 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. The A-ASSOCIATE-AC packet already leaks vendor, version, and accepted capabilities; Nmap just doesn't parse them. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
+The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
 
 This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
 ## The Wire: Ports, Services, and Auth
 
-DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE — a TCP-level handshake that negotiates which operations the session will allow — before any DIMSE (DICOM Message Service Element) message moves. Everything in this post happens in or after that handshake.
+DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or after that handshake.
 
 ### Flavors of DICOM
 
@@ -41,16 +41,16 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 
 ## Auth in DICOM
 
-A-ASSOCIATE layers two authorization controls, none of which prove identity. The server decides: can this peer connect, and what operations is the association allowed to perform.
+An AE Title is a plain string in a packet header. It's the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. A-ASSOCIATE layers two authorization controls on top of that string, neither of which proves identity: the server decides can this peer connect, and what operations is the association allowed to perform.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
 | Called AE Title | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID | *What you can ask*: which operation classes the association can use (Storage, Query/Retrieve, Modality Worklist, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
-The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE turns this into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+C-MOVE turns the AET-vs-identity gap into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
-One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET — `PR-ct5_SCU` — as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
+One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET (`PR-ct5_SCU`) as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 
 For network authentication, DICOM supports two mechanisms:
 
@@ -83,7 +83,7 @@ So integrators bolt encryption on at layers they understand. Four patterns, only
 
 Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check from the previous section. The transport got authenticated. The DICOM verbs didn't. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
 
-When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other. Revocation is never configured. The CA is a participation trophy.
+When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other and the hospital IT engineer who stood the CA up years ago has retired. Revocation is never configured. The CA is a participation trophy, and the MDM ships with self-signed defaults because their procurement process doesn't make them ship anything else.
 
 ## What Nmap Already Does for DICOM
 
@@ -95,7 +95,7 @@ With the auth model in hand, here's what Nmap already ships to probe it. Two DIC
 nmap -sS -p 104 <target>
 ```
 
-Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 is the standard DICOM port. But let's be honest, knowing a port is open tells you almost nothing. It's like confirming a building has a door. Congratulations.
+Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 is the standard DICOM port. But let's be honest, knowing a port is open tells you almost nothing. Could be DICOM. Could be an SSH daemon someone bound to 104 by mistake. It's like confirming a building has a door. Congratulations.
 
 ### 2. DICOM Discovery (dicom-ping)
 
@@ -200,7 +200,7 @@ In theory `0x52` is the authoritative vendor identifier, the medical device manu
 
 From a pentester's point of view, `0x55` is probably the most important. The Version Name tends to track the software that's actually on the wire, parsing PDUs. That's the majority of the attack surface: which library's bugs you get, regardless of whose product.
 
-The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against two OID tables, one for software toolkits and one for OEMs, so the result tags which side it came from:
+The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against two OID tables, one for software toolkits and one for device manufacturers, so the result tags which side it came from:
 
 ```lua
 local TOOLKIT_UID_PATTERNS = {
@@ -261,7 +261,7 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 |         Encapsulated PDF Storage - Explicit VR Little Endian
 ```
 
-Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries — CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the ingestion boundary where a malformed or polyglot object becomes resident in the trusted archive — the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
+Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries: CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is where a polyglot object (maldicom) can become a long term resident in the archive. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}), and the hospital is the one who pays when the MDM ships a 2026 device parsing with 2016 DCMTK.
 
 `service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here: your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that doesn't match the deployment story flags a misconfiguration.
 
@@ -273,7 +273,7 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 - **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
 - **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
 
-These roles aren't standalone boxes; they're a pipeline. Modality → PACS/VNA → AI/ML inference → viewer re-parses the same object at each hop, under independent trust assumptions, and none of them re-authenticate the bytes that arrived. The SCP you fingerprint is just the first hop; whatever it accepts on `C-STORE` propagates downstream unchecked. That's why the capability map matters past recon — it's the surface that every later parser inherits.
+These roles aren't standalone boxes; they're a pipeline. Modality → PACS/VNA → AI/ML inference → viewer re-parses the same object at each hop, under independent trust assumptions, and none of them re-authenticate the bytes that arrived. The SCP you fingerprint is just the first hop; whatever it accepts on `C-STORE` propagates downstream unchecked. That's why the capability map matters past recon. It's the surface every later parser inherits.
 
 `dicom-enum` is tagged `discovery` and `safe`, not `brute` and not `default`. Modalities are brittle, vendor support contracts get unhappy about unsolicited associations, and a default-category script proposing thirty contexts at every open port would land in the wrong inbox.
 

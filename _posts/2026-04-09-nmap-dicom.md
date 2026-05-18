@@ -6,7 +6,7 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-The A-ASSOCIATE-AC packet leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
+The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
 
 This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 

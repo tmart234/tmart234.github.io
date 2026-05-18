@@ -83,7 +83,7 @@ So integrators bolt encryption on at layers they understand. Four patterns, only
 
 Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check from the previous section. The transport got authenticated. The DICOM verbs didn't. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
 
-When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other. Revocation is never configured. The CA is a participation trophy, and the MDM ships with self-signed defaults because their procurement process doesn't make them ship anything else.
+When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other and the hospital IT engineer who stood the CA up years ago has retired. Revocation is never configured. The CA is a participation trophy, and the MDM ships with self-signed defaults because their procurement process doesn't make them ship anything else.
 
 ## What Nmap Already Does for DICOM
 
@@ -95,7 +95,7 @@ With the auth model in hand, here's what Nmap already ships to probe it. Two DIC
 nmap -sS -p 104 <target>
 ```
 
-Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 is the standard DICOM port. But let's be honest, knowing a port is open tells you almost nothing. It's like confirming a building has a door. Congratulations.
+Without any NSE scripts, you can tell if DICOM-related ports are open. Port 104 is the standard DICOM port. But let's be honest, knowing a port is open tells you almost nothing. Could be DICOM. Could be an SSH daemon someone bound to 104 by mistake. It's like confirming a building has a door. Congratulations.
 
 ### 2. DICOM Discovery (dicom-ping)
 

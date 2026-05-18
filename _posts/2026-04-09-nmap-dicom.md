@@ -83,7 +83,7 @@ So integrators bolt encryption on at layers they understand. Four patterns, only
 
 Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check from the previous section. The transport got authenticated. The DICOM verbs didn't. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
 
-When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other. Revocation is never configured. The CA is a participation trophy.
+When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other. Revocation is never configured. The CA is a participation trophy, and the MDM ships with self-signed defaults because their procurement process doesn't make them ship anything else.
 
 ## What Nmap Already Does for DICOM
 
@@ -261,7 +261,7 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 |         Encapsulated PDF Storage - Explicit VR Little Endian
 ```
 
-Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries: CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the ingestion boundary where a malformed or polyglot object becomes resident in the trusted archive. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
+Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries: CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is where a polyglot object (maldicom) can become a long term resident in the archive. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}), and the hospital is the one who pays when the MDM ships a 2026 device parsing with 2016 DCMTK.
 
 `service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here: your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that doesn't match the deployment story flags a misconfiguration.
 

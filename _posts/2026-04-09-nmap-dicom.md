@@ -12,7 +12,7 @@ This is network protocol only. DICOM file security stuff is in the [102]({% post
 
 ## The Wire: Ports, Services, and Auth
 
-DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE — a TCP-level handshake that negotiates which operations the session will allow — before any DIMSE (DICOM Message Service Element) message moves. Everything in this post happens in or after that handshake.
+DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or after that handshake.
 
 ### Flavors of DICOM
 
@@ -50,7 +50,7 @@ A-ASSOCIATE layers two authorization controls, none of which prove identity. The
 
 The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE turns this into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
-One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET — `PR-ct5_SCU` — as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
+One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET (`PR-ct5_SCU`) as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 
 For network authentication, DICOM supports two mechanisms:
 
@@ -200,7 +200,7 @@ In theory `0x52` is the authoritative vendor identifier, the medical device manu
 
 From a pentester's point of view, `0x55` is probably the most important. The Version Name tends to track the software that's actually on the wire, parsing PDUs. That's the majority of the attack surface: which library's bugs you get, regardless of whose product.
 
-The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against two OID tables, one for software toolkits and one for OEMs, so the result tags which side it came from:
+The PR does pattern-match table lookups on **both** fields independently. The 0x52 path runs the UID against two OID tables, one for software toolkits and one for device manufacturers, so the result tags which side it came from:
 
 ```lua
 local TOOLKIT_UID_PATTERNS = {
@@ -261,7 +261,7 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 |         Encapsulated PDF Storage - Explicit VR Little Endian
 ```
 
-Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries — CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the ingestion boundary where a malformed or polyglot object becomes resident in the trusted archive — the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
+Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries: CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is also the ingestion boundary where a malformed or polyglot object becomes resident in the trusted archive. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
 `service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here: your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that doesn't match the deployment story flags a misconfiguration.
 
@@ -273,7 +273,7 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 - **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
 - **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
 
-These roles aren't standalone boxes; they're a pipeline. Modality → PACS/VNA → AI/ML inference → viewer re-parses the same object at each hop, under independent trust assumptions, and none of them re-authenticate the bytes that arrived. The SCP you fingerprint is just the first hop; whatever it accepts on `C-STORE` propagates downstream unchecked. That's why the capability map matters past recon — it's the surface that every later parser inherits.
+These roles aren't standalone boxes; they're a pipeline. Modality → PACS/VNA → AI/ML inference → viewer re-parses the same object at each hop, under independent trust assumptions, and none of them re-authenticate the bytes that arrived. The SCP you fingerprint is just the first hop; whatever it accepts on `C-STORE` propagates downstream unchecked. That's why the capability map matters past recon. It's the surface every later parser inherits.
 
 `dicom-enum` is tagged `discovery` and `safe`, not `brute` and not `default`. Modalities are brittle, vendor support contracts get unhappy about unsolicited associations, and a default-category script proposing thirty contexts at every open port would land in the wrong inbox.
 

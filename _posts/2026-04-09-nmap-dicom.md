@@ -12,7 +12,9 @@ This is network protocol only. DICOM file security stuff is in the [102]({% post
 
 ## The Wire: Ports, Services, and Auth
 
-DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs). Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or after that handshake.
+DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs): client and server, basically. The same physical box often plays both roles in different sessions. A CT is an SCU when it pushes a study and an SCP when a viewer queries it.
+
+Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or right after that handshake.
 
 ### Flavors of DICOM
 
@@ -64,7 +66,7 @@ For network authentication, DICOM supports two mechanisms:
 
 ### User Identity Negotiation
 
-The catch: **there's no Reason code unique to credential failure**. Per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html), a spec-compliant acceptor rejects user identity with Result = `1` (rejected-permanent), Source = `2` (service-provider, ACSE (Association Control Service Element)), Reason = `1` (no-reason-given). That's `1/2/1`. The Source byte separates it from an AE Title miss, which comes back as Source = `1` (service-user): either `1/1/7` (explicit) or the flattened `1/1/1`. Read Source first. On stacks that flatten everything to `1/1/1`, the only tell left is whether your RQ carried a `0x58` sub-item. PS3.7 should define a distinct Reason for credential failure. It doesn't, which is why every stack flattens differently.
+The catch: **a credential rejection isn't distinguishable by Reason code.** [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html) puts the signal in the Source byte alone — Source=`2` (service-provider, ACSE (Association Control Service Element)) for a credential miss, Source=`1` (service-user) for an AE Title miss — and reuses Reason=`1` "no-reason-given" for both. There is no distinct Reason value for credential failure, which is why every stack flattens the two cases differently in practice. The pentester-side decode is in [What the Reject Tells You](#what-the-reject-tells-you) below.
 
 None of this is authentication. It's a guest list with no bouncer.
 
@@ -76,10 +78,10 @@ There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a pe
 
 So integrators bolt encryption on at layers they understand. Four patterns, only the last is actual DICOM TLS:
 
-1. **DICOMweb behind an API gateway.** Google Cloud Healthcare, AWS HealthImaging, Azure DICOM Service, modern teleradiology SaaS: DICOM verbs over HTTPS with OAuth at the edge.
-2. **Site-to-site VPN with plain DIMSE inside.** Teleradiology classic. The "TLS" is the VPN; the inner DIMSE hop is plaintext.
-3. **Image exchange networks.** Nuance PowerShare, Life Image, Intelerad/Ambra: managed DICOMweb gateways with a sales team.
-4. **Actual DICOM TLS on 2762 or TLS-wrapped 11112.** Rare, and almost always inside a single health system rather than between organizations.
+1. **DICOMweb behind an API gateway** (hospital ↔ cloud). Google Cloud Healthcare, AWS HealthImaging, Azure DICOM Service, modern teleradiology SaaS: DICOM verbs over HTTPS with OAuth at the edge.
+2. **Site-to-site VPN with plain DIMSE inside** (hospital ↔ teleradiology). The "TLS" is the VPN; the inner DIMSE hop is plaintext.
+3. **Image exchange networks** (hospital ↔ hospital, via vendor). Nuance PowerShare, Life Image, Intelerad/Ambra: managed DICOMweb gateways with a sales team.
+4. **DICOM TLS on 2762 or TLS-wrapped 11112** (modality ↔ PACS; intra-hospital). Rare, and almost always inside a single health system rather than between organizations.
 
 Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check from the previous section. The transport got authenticated. The DICOM verbs didn't. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
 
@@ -171,7 +173,7 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 | --- | --- | --- |
 | 1 / 1 / 1 (rejected permanent, service-user, no reason given) | AE Title miss. On stacks that flatten credential rejections into this code (rather than the spec-compliant `1/2/1`), it can also mean a credential miss. **Without** a `0x58` sub-item in your RQ, assume AE Title; **with** a `0x58`, could be either. | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
-| 1 / 2 / 1 (rejected permanent, service-provider/ACSE, no reason given) | Spec-compliant credential miss per [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html). AE Title was accepted, user identity was not. | Keep the AET, brute `0x58` credential forms. |
+| 1 / 2 / 1 (rejected permanent, service-provider/ACSE, no reason given) | Spec-compliant credential miss. AE Title accepted, user identity rejected. | Keep the AET, brute `0x58` credential forms. |
 
 Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 
@@ -261,11 +263,9 @@ Per [PS3.8 §9.3.3.2](https://dicom.nema.org/medical/dicom/current/output/html/p
 |         Encapsulated PDF Storage - Explicit VR Little Endian
 ```
 
-Each accepted line pairs an object type with an encoding. DICOM defines a separate Storage class for every kind of object it carries: CT, MR, ultrasound, mammogram, encapsulated PDF, structured report, RT plan, presentation state, dozens more. A properly scoped SCP accepts only what it has reason to see, so a CT-facing endpoint that also accepts encapsulated PDFs is a misconfiguration worth flagging. The accepted list is where a polyglot object (maldicom) can become a long term resident in the archive. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}), and the hospital is the one who pays when the MDM ships a 2026 device parsing with 2016 DCMTK.
+Read this output as your working attack surface, not a taxonomy. `service_commands` is your live verb list: what DIMSE you can actually send to this peer, regardless of what the spec allows. The accepted Storage classes are your image-fuzzing targets. Every entry is an object type the SCP will hand to whatever file-parsing library it linked. The Encapsulated PDF row on a CT-facing endpoint is the canonical tell. Nothing about CT workflow needs PDF parsing, but the SCP will pass a malformed PDF to its library anyway. That's the bridge to [102]({% post_url 2026-04-16-dicom-file-format-security %}), and the patient on the table is the one who pays when the MDM ships a 2024 device parsing 2018 DCMTK and never re-validates.
 
-`service_commands` and `modalities` are the same accepted list sliced two ways. Commands are which DIMSE verbs are actually reachable here: your live attack surface, not the spec's. Modalities are what this box claims to handle, and a list that doesn't match the deployment story flags a misconfiguration.
-
-`inferred_device_class` isn't spec-defined; it's practitioner shorthand for five real roles:
+`modalities` and `inferred_device_class` are the same accepted list sliced for orientation: what this box claims to be and what role it plays. `inferred_device_class` isn't spec-defined; it's practitioner shorthand for five roles:
 
 - **PACS/VNA (Vendor Neutral Archive).** The vault. Storage in, Q/R (Query/Retrieve) out, Storage Commitment and MPPS along for the ride. Whatever lands here was meant to stay forever.
 - **Archive front-end.** Storage and Q/R, no workflow plumbing. A department PACS, a research archive, a Q/R cache fronting the real VNA — built to hold copies, not the original.
@@ -273,7 +273,7 @@ Each accepted line pairs an object type with an encoding. DICOM defines a separa
 - **RIS gateway.** Worklist only, refuses Storage. Demographics and schedules; the pixels live somewhere else.
 - **Print server.** Hardcopy and film, a holdover from when radiologists read off light boxes — and one that has no business answering outside the modality VLAN.
 
-These roles aren't standalone boxes; they're a pipeline. Modality → PACS/VNA → AI/ML inference → viewer re-parses the same object at each hop, under independent trust assumptions, and none of them re-authenticate the bytes that arrived. The SCP you fingerprint is just the first hop; whatever it accepts on `C-STORE` propagates downstream unchecked. That's why the capability map matters past recon. It's the surface every later parser inherits.
+Whatever the SCP accepts on `C-STORE` propagates downstream unchecked. Modality → PACS/VNA → AI/ML → viewer, each hop re-parses, none re-authenticates. The capability map is the attack surface every later parser inherits.
 
 `dicom-enum` is tagged `discovery` and `safe`, not `brute` and not `default`. Modalities are brittle, vendor support contracts get unhappy about unsolicited associations, and a default-category script proposing thirty contexts at every open port would land in the wrong inbox.
 

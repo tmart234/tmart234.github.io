@@ -6,7 +6,7 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-Most people don't know that Nmap (the port scanning tool everyone and their grandma has used) supports DICOM. And not in a half-baked way: there are Nmap scripts revealing network protocol-level insights. The A-ASSOCIATE-AC packet already leaks vendor, version, and accepted capabilities; Nmap just doesn't parse them. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
+The A-ASSOCIATE-AC packet leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
 
 This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
@@ -41,14 +41,14 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 
 ## Auth in DICOM
 
-A-ASSOCIATE layers two authorization controls, none of which prove identity. The server decides: can this peer connect, and what operations is the association allowed to perform.
+An AE Title is a plain string in a packet header. It's the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. A-ASSOCIATE layers two authorization controls on top of that string, neither of which proves identity: the server decides can this peer connect, and what operations is the association allowed to perform.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
 | Called AE Title | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID | *What you can ask*: which operation classes the association can use (Storage, Query/Retrieve, Modality Worklist, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
-The table leaves out something important: an AE Title is a plain string in a packet header. It is the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. C-MOVE turns this into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+C-MOVE turns the AET-vs-identity gap into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET (`PR-ct5_SCU`) as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 

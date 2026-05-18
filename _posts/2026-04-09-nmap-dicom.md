@@ -76,10 +76,10 @@ There's no STARTTLS-style upgrade in A-ASSOCIATE and no in-band signal that a pe
 
 So integrators bolt encryption on at layers they understand. Four patterns, only the last is actual DICOM TLS:
 
-1. **DICOMweb behind an API gateway.** Google Cloud Healthcare, AWS HealthImaging, Azure DICOM Service, modern teleradiology SaaS: DICOM verbs over HTTPS with OAuth at the edge.
-2. **Site-to-site VPN with plain DIMSE inside.** Teleradiology classic. The "TLS" is the VPN; the inner DIMSE hop is plaintext.
-3. **Image exchange networks.** Nuance PowerShare, Life Image, Intelerad/Ambra: managed DICOMweb gateways with a sales team.
-4. **Actual DICOM TLS on 2762 or TLS-wrapped 11112.** Rare, and almost always inside a single health system rather than between organizations.
+1. **DICOMweb behind an API gateway** (hospital ↔ cloud). Google Cloud Healthcare, AWS HealthImaging, Azure DICOM Service, modern teleradiology SaaS: DICOM verbs over HTTPS with OAuth at the edge.
+2. **Site-to-site VPN with plain DIMSE inside** (hospital ↔ teleradiology). The "TLS" is the VPN; the inner DIMSE hop is plaintext.
+3. **Image exchange networks** (hospital ↔ hospital, via vendor). Nuance PowerShare, Life Image, Intelerad/Ambra: managed DICOMweb gateways with a sales team.
+4. **DICOM TLS on 2762 or TLS-wrapped 11112** (modality ↔ PACS; intra-hospital). Rare, and almost always inside a single health system rather than between organizations.
 
 Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check from the previous section. The transport got authenticated. The DICOM verbs didn't. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
 

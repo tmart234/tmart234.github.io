@@ -74,7 +74,7 @@ None of this is authentication. It's a guest list with no bouncer.
 
 [PS3.15](https://dicom.nema.org/medical/dicom/current/output/html/part15.html) defines TLS profiles with mutual auth. The spec is fine. The deployments are not.
 
-There's no STARTTLS-style upgrade (an in-band "switch this plaintext connection to TLS now" command, like SMTP's) in A-ASSOCIATE, and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of deployments run TLS on 104 or 11112 because the vendor's config UI has one "DICOM port" field and a "use TLS" checkbox.
+There's no STARTTLS-style upgrade (an in-band "switch this plaintext connection to TLS now" command) in A-ASSOCIATE, and no in-band signal that a peer requires TLS. A listener on 104 either speaks DICOM in the clear or it speaks TLS, and you find out by probing. Port 2762 is `dicom-tls` per IANA, but plenty of deployments run TLS on 104 or 11112 because the vendor's config UI has one "DICOM port" field and a "use TLS" checkbox.
 
 So integrators bolt encryption on at layers they understand. Four patterns, only the last is actual DICOM TLS:
 
@@ -194,7 +194,7 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
 
 - **`0x52` Implementation Class UID** — a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM — Original Equipment Manufacturer, the device vendor).
-- **`0x55` Implementation Version Name** — a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). Conforming implementations can omit it, and the PR handles that case.
+- **`0x55` Implementation Version Name** — a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). MDMs can omit it, and the PR handles that case.
 
 #### Why You Need to Look Up Both
 

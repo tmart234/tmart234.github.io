@@ -303,7 +303,7 @@ Nmap tells you who you're talking to; [my Scapy DICOM contrib module](https://gi
 - **No DICOMweb NSE.** The HTTPS-fronted variant — WADO/QIDO/STOW, what every cloud imaging API actually speaks — has no Nmap coverage at all.
 - **No public AET wordlist worth the name.** SecLists has a medical-devices file; it's a starting point, not a finished asset. Vendor-specific naming patterns (`MR_ER_3`, `PR-ct5_SCU`, `<MFG>_<MODALITY>_<ROOM>`) deserve their own corpus.
 
-The gaps are the next layer up. Below them, the default DICOM recon stack just got bigger. `dicom-ping` told you it was DICOM. Fingerprinting tells you whose code is parsing your packets. `dicom-enum` tells you what role it plays and what it'll accept. All three ride the same single A-ASSOCIATE-RQ `dicom-ping` was already sending. No new packets on the hospital network, no new noise in the SOC.
+Those are open problems. The default recon stack underneath them just got bigger. `dicom-ping` told you it was DICOM. Fingerprinting tells you whose code is parsing your packets. `dicom-enum` tells you what role it plays and what it'll accept. All three ride the same single A-ASSOCIATE-RQ `dicom-ping` was already sending. No new packets on the hospital network, no new noise in the SOC.
 
 Scapy next.
 

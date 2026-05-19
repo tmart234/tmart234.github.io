@@ -28,7 +28,7 @@ DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: be
 
 ### DIMSE Services
 
-After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) are workflow-state verbs that update where a procedure is in its lifecycle, e.g. MPPS (Modality Performed Procedure Step), storage-commitment results, print jobs.
+After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) are workflow-state verbs that move a procedure between lifecycle states like IN PROGRESS and COMPLETED, e.g. MPPS (Modality Performed Procedure Step), storage-commitment results, print jobs.
 
 N-services get far less scrutiny. Once a peer is associated there's no per-verb auth, so an `N-SET` that flips an MPPS to COMPLETED or a forged storage-commitment `N-EVENT-REPORT` lands with the same trust as a `C-STORE`. No pixels touched, no hash mismatch, just corrupted workflow. The ones you need to know:
 
@@ -54,7 +54,7 @@ C-MOVE turns the AET-vs-identity gap into a primitive. The destination AE Title 
 
 The C-MOVE pivot assumes the attacker is knowledgeable about other DICOM systems in the environment. But Greenbone's 2019 audit found a single PACS holding 1.23 million studies with SSNs records and an archive of US Army hospital data with patient identifiers. No exploit needed, just a DICOM viewer pointed at a public IP address [[6]](#references). TridentUSA passed an HHS Security Rule audit in March 2019 while its 187 servers sat indexable on Shodan.
 
-One physical device typically registers several AETs (Storage, Storage Commitment, Print, workflow client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+One physical device typically registers several AETs (Storage, Storage Commitment, Modality Worklist, Print), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET (`PR-ct5_SCU`) as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 

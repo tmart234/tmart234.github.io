@@ -28,7 +28,7 @@ DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: be
 
 ### DIMSE Services
 
-After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) act on workflow state: MPPS (Modality Performed Procedure Step) updates, storage-commitment results, print jobs.
+After association, DIMSE splits into two families. **C-services** (Composite) act on clinical objects themselves: store, find, get, move. This is the data plane, where PHI lives and where nearly all pentest and threat-model attention goes. **N-services** (Normalized) are workflow-state verbs that move a procedure between lifecycle states like IN PROGRESS and COMPLETED, e.g. MPPS (Modality Performed Procedure Step), storage-commitment results, print jobs.
 
 N-services get far less scrutiny. Once a peer is associated there's no per-verb auth, so an `N-SET` that flips an MPPS to COMPLETED or a forged storage-commitment `N-EVENT-REPORT` lands with the same trust as a `C-STORE`. No pixels touched, no hash mismatch, just corrupted workflow. The ones you need to know:
 
@@ -54,7 +54,7 @@ C-MOVE turns the AET-vs-identity gap into a primitive. The destination AE Title 
 
 The C-MOVE pivot assumes the attacker is knowledgeable about other DICOM systems in the environment. But Greenbone's 2019 audit found a single PACS holding 1.23 million studies with SSNs records and an archive of US Army hospital data with patient identifiers. No exploit needed, just a DICOM viewer pointed at a public IP address [[6]](#references). TridentUSA passed an HHS Security Rule audit in March 2019 while its 187 servers sat indexable on Shodan.
 
-One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+One physical device typically registers several AETs (Storage, Storage Commitment, Modality Worklist, Print), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET (`PR-ct5_SCU`) as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 
@@ -70,7 +70,7 @@ For network authentication, DICOM supports two mechanisms:
 
 ### User Identity Negotiation
 
-The catch: **a credential rejection isn't distinguishable by Reason code.** [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html) puts the signal in the Source byte alone — Source=`2` (service-provider, ACSE (Association Control Service Element)) for a credential miss, Source=`1` (service-user) for an AE Title miss — and reuses Reason=`1` "no-reason-given" for both. There is no distinct Reason value for credential failure, which is why every stack flattens the two cases differently in practice. The pentester-side decode is in [What the Reject Tells You](#what-the-reject-tells-you) below.
+The catch: **a credential rejection isn't distinguishable by Reason code.** [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html) puts the signal in the Source byte alone — Source=`2` (service-provider) for a credential miss, Source=`1` (service-user) for an AE Title miss — and reuses Reason=`1` "no-reason-given" for both. There is no distinct Reason value for credential failure, which is why every stack flattens the two cases differently in practice. The pentester-side decode is in [What the Reject Tells You](#what-the-reject-tells-you) below.
 
 None of this is authentication. It's a guest list with no bouncer.
 
@@ -177,7 +177,7 @@ When the server sends A-ASSOCIATE-RJ instead of AC, [PS3.8 §9.3.4](https://dico
 | --- | --- | --- |
 | 1 / 1 / 1 (rejected permanent, service-user, no reason given) | AE Title miss. On stacks that flatten credential rejections into this code (rather than the spec-compliant `1/2/1`), it can also mean a credential miss. **Without** a `0x58` sub-item in your RQ, assume AE Title; **with** a `0x58`, could be either. | Try an AE Title wordlist first; once you've pinned a valid AET, re-run *with* a `0x58` and pivot to a credential wordlist. |
 | 1 / 1 / 7 (called AET not recognized) | AE Title gate, explicit | Brute AE Title |
-| 1 / 2 / 1 (rejected permanent, service-provider/ACSE, no reason given) | Spec-compliant credential miss. AE Title accepted, user identity rejected. | Keep the AET, brute `0x58` credential forms. |
+| 1 / 2 / 1 (rejected permanent, service-provider, no reason given) | Spec-compliant credential miss. AE Title accepted, user identity rejected. | Keep the AET, brute `0x58` credential forms. |
 
 Order of operations: on spec-compliant stacks the Source byte alone separates the two gates (`1/1/*` = AE Title, `1/2/*` = user identity), so you can run the campaigns independently. On stacks that flatten everything to `1/1/1`, the code means different things depending on whether your RQ carried a `0x58`. (`1/1/2 protocol version not supported` also exists, rare in practice; flip the Protocol-Version bits and re-propose if you hit it.)
 

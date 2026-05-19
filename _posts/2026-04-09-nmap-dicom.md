@@ -151,7 +151,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything.
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything. Trend Micro's 2025 scan of 3,627 internet-exposed DICOM servers measured the population: 99.56% accept `ANY-SCP` [[5]](#references). The "insecure" flag is the default condition.
 
 ### 3. AE Title Brute Force
 

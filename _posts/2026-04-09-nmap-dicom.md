@@ -50,7 +50,11 @@ An AE Title is a plain string in a packet header. It's the only identifier class
 | Called AE Title | Whether you can ask — is the association accepted at all | Per-AET (one device may register several) | ANY-SCP wildcard accepts any caller |
 | Abstract Syntax / SOP Class UID | *What you can ask*: which operation classes the association can use (Storage, Query/Retrieve, Modality Worklist, MPPS, Print) | Per-operation-class | Storage accepted when the role only needs Query |
 
-C-MOVE turns the AET-vs-identity gap into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps. One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
+C-MOVE turns the AET-vs-identity gap into a primitive. The destination AE Title in a C-MOVE-RQ is a name the server looks up in its own table (AET to IP:port), then opens a new outbound connection to wherever that entry points. Name an AE Title the PACS (Picture Archiving and Communication System) already trusts and it will ship PHI to wherever that entry maps.
+
+The C-MOVE pivot assumes the attacker is knowledgeable about other DICOM systems in the environment. But Greenbone's 2019 audit found a single PACS holding 1.23 million studies with SSNs records and an archive of US Army hospital data with patient identifiers. No exploit needed, just a DICOM viewer pointed at a public IP address [[6]](#references). TridentUSA passed an HHS Security Rule audit in March 2019 while its 187 servers sat indexable on Shodan.
+
+One physical device typically registers several AETs (Storage, Storage Commitment, MPPS, MWL (Modality Worklist) client), each scoped separately in the PACS config. Naming conventions like `MR_ER_3` or `WORKLIST_PROD` are predictable enough that wordlists work, which is why `dicom-brute` exists.
 
 One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity at a real site notes a single CT advertising one AET as a Storage SCU and a different AET (`PR-ct5_SCU`) as a Print SCU [[4]](#references). That's the rule. So an AET wordlist hit isn't telling you the device's name; it's telling you one of the device's roles. Run `dicom-enum` against each hit and the capability map will differ per AET.
 
@@ -151,7 +155,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything.
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything. Trend Micro's 2025 scan of 3,627 internet-exposed DICOM servers measured the population: 99.56% accept `ANY-SCP` [[5]](#references). The "insecure" flag is the default condition.
 
 ### 3. AE Title Brute Force
 
@@ -229,6 +233,8 @@ The 0x55 path uses a similar table keyed on substrings of the version string. Su
 - If `0x52` and `0x55` disagree, that's a useful signal: an OEM customized the stack, and you should look up the OID to find who.
 - If both fields point at the same open-source stack, the manufacturer probably never registered their own OID.
 
+And the second case isn't a corner. Trend Micro's 2025 scan of 3,627 internet-exposed DICOM servers fingerprinted 44% as DCMTK and 14% as OsiriX; 321 of the OsiriX servers, or 9% of the entire exposed population, was still running version 3.6.1, a 2009 release [[5]](#references). The `TOOLKIT_UID_PATTERNS` table above resolves to almost half of the exposed population on its own. Another 32% returned a UID neither table matches. This is a collection of some OEMs that registered their own arc and never published it to public OID databases, some are OEMs who invented a string and called it a UID, and some omitted `0x55` entirely so there was nothing to match against. The spec says UIDs "shall not be parsed." So the vendor took that as license to make them unparseable.
+
 ## Capability Enumeration (dicom-enum)
 
 Knowing the box is Orthanc 1.11.0 isn't enough. The next questions: what role does it play — archive, work-order server, scanner, print gateway — and which objects will it accept? Both answers sit in the A-ASSOCIATE-AC if you propose enough Presentation Contexts to draw them out. So I wrote [`dicom-enum`](https://github.com/tmart234/nmap_dicom/blob/main/scripts/dicom-enum.nse), a third NSE script that proposes about thirty contexts in one A-ASSOCIATE-RQ and buckets the responses.
@@ -305,3 +311,5 @@ Two choices for hospitals running plaintext DIMSE on flat networks: segment it o
 2. Nmap PR adding DICOM vendor/version fingerprinting off the A-ASSOCIATE-AC (link TBD pending merge or reviewable state).
 3. OFFIS DCMTK 3.6.9 release announcement (Dec 10, 2024): [forum.dcmtk.org/viewtopic.php?t=5429](https://forum.dcmtk.org/viewtopic.php?t=5429).
 4. Shepard, S. J. (2004). *DICOM Basics for Radiographic and Fluoroscopic Systems.* 2004 AAPM Summer School: [aapm.org/meetings/04ss/documents/DICOMBasics.pdf](https://www.aapm.org/meetings/04ss/documents/DICOMBasics.pdf).
+5. Huq, N. and Alves, A. / Trend Micro (May 5, 2026). *A Hidden Vulnerability in Healthcare: Exposed DICOM Servers and the Risk to Patient Data.* Scan of 3,627 internet-exposed DICOM servers via Shodan, November–December 2025: [trendmicro.com/vinfo/us/security/news/cybercrime-and-digital-threats/a-hidden-vulnerability-in-healthcare-exposed-dicom-servers-and-the-risk-to-patient-data](https://www.trendmicro.com/vinfo/us/security/news/cybercrime-and-digital-threats/a-hidden-vulnerability-in-healthcare-exposed-dicom-servers-and-the-risk-to-patient-data).
+6. Schrader, D. / Greenbone Networks (Nov 17, 2019). *Information Security Report: Unprotected Patient Data in the Internet — A Review 60 Days Later.* [greenbone.net/.../Greenbone_Security_Report_Unprotected_Patient_Data_a_Review.pdf](https://www.greenbone.net/wp-content/uploads/Greenbone_Security_Report_Unprotected_Patient_Data_a_Review.pdf). TridentUSA HHS audit detail per Warner press release Nov 8, 2019: [warner.senate.gov](https://www.warner.senate.gov/newsroom/press-releases/warner-raises-alarm-about-hhs-failure-to-act-following-exposure-of-sensitive-patient-data/).

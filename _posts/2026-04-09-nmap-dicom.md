@@ -292,18 +292,6 @@ nmap --script dicom-enum \
      --script-args dicom.called_aet=<AET> <target>  # capability map
 ```
 
-## Detection: What This Looks Like From the SOC
-
-The three scripts have distinct fingerprints on the wire, all readable off the A-ASSOCIATE handshake without a DICOM-aware parser:
-
-- `dicom-ping`: one A-ASSOCIATE-RQ from a source IP, no DIMSE follow-up, connection close inside 100 ms. Sequential probes against 104 and 11112 from the same source is the tell.
-- `dicom-brute`: many A-ASSOCIATE-RQ from one source IP with varying Called AET strings (a dictionary pattern). High A-ASSOCIATE-RJ rate.
-- `dicom-enum`: one A-ASSOCIATE-RQ proposing 20-plus Presentation Contexts. A CT pushing Storage proposes Storage SOP classes plus Verification, not the whole catalog; legitimate clients propose one to five contexts for the operation they're actually doing.
-
-The vendor/version fingerprinting PR reads bytes already in the `dicom-ping` AC response, so it shares the `dicom-ping` signature exactly. No new packets.
-
-What to actually log: the AC's Implementation Class UID (`0x52`) and Implementation Version Name (`0x55`) on every accepted association, indexed by source AET. That gives you free passive asset inventory — every modality, viewer, and PACS that ever associated with the network, by vendor and version, no agents required. Until someone writes the Spicy grammar (see §Gaps), a SIEM rule against firewall and proxy logs is what you have.
-
 ## Beyond Nmap (Scapy)
 
 Nmap tells you who you're talking to; [my Scapy DICOM contrib module](https://github.com/secdev/scapy/commit/ded1d73d7c779099964338803ad7b366c99d6820) is what you reach for next. Same A-ASSOCIATE on the wire, but you can craft anything: C-FIND, malformed image PDUs against a parser, or username/passcode brute force via the User Identity sub-item with the SecLists medical-devices wordlist. Workflow in a future post.

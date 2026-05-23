@@ -6,25 +6,17 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
+The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. The NSE (Nmap Scripting Engine) library has shipped DICOM scripts since 2019 and they leave bytes on the table.
 
 This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
 ## The Wire: Ports, Services, and Auth
 
-DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs): client and server, basically. The same physical box often plays both roles in different sessions. A CT is an SCU when it pushes a study and an SCP when a viewer queries it.
+Classic DICOM listens on 104 and 11112; DICOM-over-TLS on 2762; DICOMweb (WADO/QIDO/STOW) rides 80/443. DICOM nodes act as Service Class Users (SCUs) and Service Class Providers (SCPs): client and server, basically. The same physical box often plays both roles in different sessions. A CT is an SCU when it pushes a study and an SCP when a viewer queries it.
 
 Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Element) message moves. A-ASSOCIATE is a TCP-level handshake that negotiates which operations the session will allow. Everything in this post happens in or right after that handshake.
 
-### Flavors of DICOM
-
-| Service | Port(s) |
-| --- | --- |
-| DICOM (upper-layer protocol) | 104, 11112 |
-| DICOM over TLS | 2762 |
-| DICOMweb | 80, 443 |
-
-DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." DICOMweb is out of scope for this post; the lack of Nmap coverage is in the gaps list at the end.
+DICOMweb rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." DICOMweb is out of scope for this post; the lack of Nmap coverage is in the gaps list at the end.
 
 ### DIMSE Services
 
@@ -43,7 +35,9 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 
 ## Auth in DICOM
 
-An AE Title is a plain string in a packet header. It's the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. A-ASSOCIATE layers two authorization controls on top of that string, neither of which proves identity: the server decides can this peer connect, and what operations is the association allowed to perform.
+An AE Title is a plain string in a packet header. Trend Micro's late-2025 scan of 3,627 internet-exposed DICOM servers found 99.56% accept `ANY-SCP` (the wildcard AET meaning "any caller") as a valid peer [[5]](#references). The auth model's defaults are the deployed defaults.
+
+Classic DICOM ties no identity to that string. A-ASSOCIATE layers two authorization controls on top of it, neither of which proves who you are: the server decides whether the peer can connect, and what operations the association can use. When the server accepts `ANY-SCP`, both controls collapse into the second.
 
 | Control | What it authorizes | Granularity | Typical failure |
 | --- | --- | --- | --- |
@@ -60,8 +54,8 @@ One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity
 
 For network authentication, DICOM supports two mechanisms:
 
-- **DICOM TLS** — authenticates the transport peer. Mutual-auth capable.
-- **User Identity Negotiation** — authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and supports one of:
+- **DICOM TLS**: authenticates the transport peer. Mutual-auth capable.
+- **User Identity Negotiation**: authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and supports one of:
     - username only
     - username + passcode
     - Kerberos service ticket
@@ -72,7 +66,7 @@ For network authentication, DICOM supports two mechanisms:
 
 The catch: **a credential rejection isn't distinguishable by Reason code.** [PS3.7 §D.3.3.7.3](https://dicom.nema.org/medical/dicom/current/output/chtml/part07/sect_D.3.3.7.3.html) puts the signal in the Source byte alone — Source=`2` (service-provider) for a credential miss, Source=`1` (service-user) for an AE Title miss — and reuses Reason=`1` "no-reason-given" for both. There is no distinct Reason value for credential failure, which is why every stack flattens the two cases differently in practice. The pentester-side decode is in [What the Reject Tells You](#what-the-reject-tells-you) below.
 
-None of this is authentication. It's a guest list with no bouncer.
+None of this is authentication. It's a guest list with no bouncer. When a forged storage-commitment `N-EVENT-REPORT` lands at 3 a.m., the on-call biomed sees a workflow-state anomaly on a Tuesday morning ticket, not an authentication failure: the protocol never thought to call it one.
 
 ### TLS: Specified, Inconsistently Deployed
 
@@ -87,7 +81,7 @@ So integrators bolt encryption on at layers they understand. Four patterns, only
 3. **Image exchange networks** (hospital ↔ hospital, via vendor). Nuance PowerShare, Life Image, Intelerad/Ambra: managed DICOMweb gateways with a sales team.
 4. **DICOM TLS on 2762 or TLS-wrapped 11112** (modality ↔ PACS; intra-hospital). Rare, and almost always inside a single health system rather than between organizations.
 
-Whatever the envelope, the inner DIMSE is still gated by the same Called AE Title check from the previous section. The transport got authenticated. The DICOM verbs didn't. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
+Whatever the envelope, the inner DIMSE rides the same Called AE Title gate from §Auth. The transport authenticated; the verbs still trust whatever AET the peer claims. More commonly it's server-auth only, with the AE Title standing in as "client identity," which is not authentication.
 
 When mutual TLS does show up, it usually rides a flat hospital-wide CA. Every modality's cert is trusted to act as every other and the hospital IT engineer who stood the CA up years ago has retired. Revocation is never configured. The CA is a participation trophy, and the MDM ships with self-signed defaults because their procurement process doesn't make them ship anything else.
 
@@ -155,7 +149,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything. Trend Micro's 2025 scan of 3,627 internet-exposed DICOM servers measured the population: 99.56% accept `ANY-SCP` [[5]](#references). The "insecure" flag is the default condition.
+One script-specific note: `dicom-ping` flags `ANY-SCP` accept as insecure. Given the §Auth population stat, the flag fires on most internet-exposed targets — it's the default condition, not the outlier.
 
 ### 3. AE Title Brute Force
 
@@ -197,8 +191,8 @@ After looking at the DICOM A-ASSOCIATE packets that Nmap's `dicom-ping` script a
 
 The A-ASSOCIATE-AC packet has a User Information payload (Item Type `0x50`) containing nested Type-Length-Value (TLV) structures. The two fields the PR fingerprints:
 
-- **`0x52` Implementation Class UID** — a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM).
-- **`0x55` Implementation Version Name** — a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). Conforming implementations can omit it, and the PR handles that case.
+- **`0x52` Implementation Class UID**: a dot-notation OID (Object Identifier), mandatory in the AC. The DICOM spec says UIDs "shall not be parsed", but in practice the root arc identifies the implementer: [`1.2.276.0.7230010.3`](https://oid-base.com/get/1.2.276.0.7230010.3) is OFFIS DCMTK (a software library); [`1.2.840.113619`](https://oid-base.com/get/1.2.840.113619) is GE Medical Systems (an OEM).
+- **`0x55` Implementation Version Name**: a free-form string, optional. `OFFIS_DCMTK_369` parses to DCMTK 3.6.9 [[3]](#references). Conforming implementations can omit it, and the PR handles that case.
 
 #### Why You Need to Look Up Both
 
@@ -300,7 +294,7 @@ Nmap tells you who you're talking to; [my Scapy DICOM contrib module](https://gi
 
 - **No Spicy DICOM parser.** A Spicy grammar would compile to both Zeek and Suricata, so a hospital SOC could get DICOM-aware logging and inline detection from one parser. Nobody's written it.
 - **No Metasploit modules.** No `auxiliary/scanner/dicom/*`, no exploits for the published CVEs in DCMTK or the major PACS stacks. Pentests reach for Python one-offs every time.
-- **No DICOMweb NSE.** The HTTPS-fronted variant — WADO/QIDO/STOW, what every cloud imaging API actually speaks — has no Nmap coverage at all.
+- **No DICOMweb NSE.** The HTTPS-fronted variant (WADO/QIDO/STOW, what every cloud imaging API actually speaks) has no Nmap coverage at all.
 - **No public AET wordlist worth the name.** SecLists has a medical-devices file; it's a starting point, not a finished asset. Vendor-specific naming patterns (`MR_ER_3`, `PR-ct5_SCU`, `<MFG>_<MODALITY>_<ROOM>`) deserve their own corpus.
 
 Those are open problems. The default recon stack underneath them just got bigger. `dicom-ping` told you it was DICOM. Fingerprinting tells you whose code is parsing your packets. `dicom-enum` tells you what role it plays and what it'll accept. All three ride the same single A-ASSOCIATE-RQ `dicom-ping` was already sending. No new packets on the hospital network, no new noise in the SOC.

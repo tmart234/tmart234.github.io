@@ -6,7 +6,7 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table. This post covers basic protocol fluency, what Nmap already ships, two PRs I submitted (fingerprinting and capability enumeration), and my Scapy DICOM PR.
+The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap (the port scanner everyone and their grandma has used) supports DICOM at all, much less since 2019: there are NSE (Nmap Scripting Engine) scripts revealing network protocol-level insights, and they leave bytes on the table.
 
 This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
@@ -18,13 +18,9 @@ Two of them set up an A-ASSOCIATE before any DIMSE (DICOM Message Service Elemen
 
 ### Flavors of DICOM
 
-| Service | Port(s) |
-| --- | --- |
-| DICOM (upper-layer protocol) | 104, 11112 |
-| DICOM over TLS | 2762 |
-| DICOMweb | 80, 443 |
+DICOM speaks plaintext on 104 and 11112, TLS on 2762, and HTTPS (DICOMweb: WADO/QIDO/STOW) on 80 and 443.
 
-DICOMweb (WADO/QIDO/STOW) rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." DICOMweb is out of scope for this post; the lack of Nmap coverage is in the gaps list at the end.
+DICOMweb rides HTTPS, so on paper auth is in a better place: bearer tokens, OAuth, standard TLS, all the REST-API hygiene the upper-layer protocol never had. In practice, deployments ship with no auth or vendor default credentials, and the attack surface collapses into "under-configured REST API with PHI behind it." DICOMweb is out of scope for this post; the lack of Nmap coverage is in the gaps list at the end.
 
 ### DIMSE Services
 
@@ -43,6 +39,10 @@ N-services get far less scrutiny. Once a peer is associated there's no per-verb 
 
 ## Auth in DICOM
 
+Trend Micro's 2025 scan of 3,627 internet-exposed DICOM servers measured the population: 99.56% accept `ANY-SCP` [[5]](#references). The "insecure" flag is the default condition.
+
+The patient on the table never sees the AE Title string; she sees a tech, a gantry, a warming blanket — and a PACS that will accept her images on the strength of that string alone.
+
 An AE Title is a plain string in a packet header. It's the only identifier classic DICOM assigns to a device, and nothing in the protocol ties that string to a specific IP address. A-ASSOCIATE layers two authorization controls on top of that string, neither of which proves identity: the server decides can this peer connect, and what operations is the association allowed to perform.
 
 | Control | What it authorizes | Granularity | Typical failure |
@@ -60,8 +60,8 @@ One IP, many AETs. A 2004 AAPM physics report walking through DICOM connectivity
 
 For network authentication, DICOM supports two mechanisms:
 
-- **DICOM TLS** — authenticates the transport peer. Mutual-auth capable.
-- **User Identity Negotiation** — authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and supports one of:
+- **DICOM TLS**: authenticates the transport peer. Mutual-auth capable.
+- **User Identity Negotiation**: authenticates the user. [DICOM PS3.7 §D.3.3.7](https://dicom.nema.org/medical/dicom/current/output/html/part07.html) defines a User Identity sub-item (Type `0x58`) that rides inside the A-ASSOCIATE-RQ and supports one of:
     - username only
     - username + passcode
     - Kerberos service ticket
@@ -155,7 +155,7 @@ sequenceDiagram
 
 Nmap sends an A-ASSOCIATE-RQ, the server responds with an A-ASSOCIATE-AC (accept) or A-ASSOCIATE-RJ (reject), and Nmap drops the connection. Nmap DICOM scripts are built on parsing whatever comes back in that single response: no extra packets, no extra noise on the network. Keep this mental model.
 
-One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything. Trend Micro's 2025 scan of 3,627 internet-exposed DICOM servers measured the population: 99.56% accept `ANY-SCP` [[5]](#references). The "insecure" flag is the default condition.
+One script-specific note: when `dicom-ping` gets an association accepted using the generic `ANY-SCP` called AE Title, it flags the wildcard as insecure. The server is treating that wildcard identifier as a valid peer, so the Called AE Title check isn't filtering anything.
 
 ### 3. AE Title Brute Force
 

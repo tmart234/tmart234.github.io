@@ -6,7 +6,7 @@ tags: [dicom, medical-devices, nmap]
 mermaid: true
 ---
 
-The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. The NSE library has shipped DICOM scripts since 2019 and they leave bytes on the table.
+The A-ASSOCIATE-AC packet (the accept response in DICOM's session-setup handshake) leaks vendor, version, and accepted capabilities. Nmap doesn't parse them. Most people don't know Nmap supports DICOM at all: the NSE library has shipped DICOM scripts since 2019 and they leave bytes on the table.
 
 This is network protocol only. DICOM file security stuff is in the [102]({% post_url 2026-04-16-dicom-file-format-security %}).
 
